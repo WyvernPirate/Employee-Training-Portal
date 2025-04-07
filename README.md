@@ -56,7 +56,7 @@ This web application serves as a training portal for an automotive spare parts c
 * Frontend:  React
 * Backend:  Next.js
 * Database:  FireBase
-* Other:  N/A
+
 
 ##   Team Members
 
