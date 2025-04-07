@@ -62,7 +62,6 @@ This web application serves as a training portal for an automotive spare parts c
 
 * Phemelo Moloi
 * Omolemo
-* Prince Sebina
 * Edward
 * Lame Moilwa
 * Lusindo
