@@ -46,8 +46,7 @@ This web application serves as a training portal for an automotive spare parts c
 ##   Getting Started
 
 1.  Clone the repository: `git clone <repository_url>`
-2.  Install dependencies: `npm install`
-                          `npm install -D vite`
+2.  Install dependencies: `npm install``npm install -D vite`
 3.  Set up the database: TBD
 4.  Run the application: `npm start`,
 
@@ -55,8 +54,7 @@ This web application serves as a training portal for an automotive spare parts c
 
 * Frontend:  React
 * Backend:  Next.js
-* Database:  FireBase
-
+* Database: Firebase
 
 ##   Team Members
 
