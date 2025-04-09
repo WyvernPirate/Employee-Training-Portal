@@ -17,7 +17,7 @@ const Index = () => {
             <Button 
               variant="outline" 
               onClick={() => navigate('/login')}
-              className="text-white border-white hover:bg-[#ea384c] hover:text-white"
+              className="text-black border-white hover:bg-[#ea384c] hover:text-white"
             >
               Login
             </Button>
@@ -42,7 +42,7 @@ const Index = () => {
               onClick={() => navigate('/admin-login')} 
               variant="outline" 
               size="lg"
-              className="text-white border-white hover:bg-black hover:border-black"
+              className="text-[#ea384c] border-white hover:bg-black hover:border-black"
             >
               Administrator Login
             </Button>
