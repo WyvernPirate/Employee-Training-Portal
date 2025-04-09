@@ -63,7 +63,7 @@ const Index = () => {
               <p className="text-gray-600">Access comprehensive video tutorials on automotive spare parts.</p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-lg shadow-md flex flex-col items-center text-center">
+            <div className="bg-gray-50 p-6 rounded-lg shadow-md flex flex-col items-center text-center ">
               <div className="bg-[#ea384c] p-3 rounded-full mb-4">
                 <GraduationCap className="h-8 w-8 text-white" />
               </div>
