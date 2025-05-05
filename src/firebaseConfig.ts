@@ -1,21 +1,28 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+// import { getAnalytics } from "firebase/analytics"; // Optional: if you want analytics
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// IMPORTANT: Use environment variables for sensitive keys in production!
+// Create a .env file in your project root (c:\VS\webdev\Employee-Training-Portal\.env)
+// Add your keys like: VITE_FIREBASE_API_KEY=YOUR_ACTUAL_KEY
 const firebaseConfig = {
-  apiKey: "AIzaSyDsKpzOqOgxPyNpKoaKPp9zLezWEVo7wVw",
-  authDomain: "employee-training-portal-6a36e.firebaseapp.com",
-  projectId: "employee-training-portal-6a36e",
-  storageBucket: "employee-training-portal-6a36e.firebasestorage.app",
-  messagingSenderId: "453675831672",
-  appId: "1:453675831672:web:f80789805baf281273b88d",
-  measurementId: "G-3XWSYB79Y3"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID // Optional
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Initialize services
+const db = getFirestore(app); // Firestore database instance
+const auth = getAuth(app); // Authentication instance
+// const analytics = getAnalytics(app); // Optional
+
+export { db, auth, app }; // Export the instances you need
