@@ -2,9 +2,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import bcrypt from 'bcryptjs';
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
+import { db } from '@/firebaseConfig'; // Import your Firestore instance
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -12,23 +15,42 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    toast.dismiss(); // Clear previous toasts
     
-    // Simulate login (in a real app, this would be an API call)
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // For demo purposes - admin@test.com goes to admin dashboard
-      if (email === 'admin@test.com' && password === 'password') {
-        toast.success('Admin login successful!');
-        navigate('/admin-dashboard');
+    try {
+      // 1. Query Firestore for the admin user by email
+      const adminCollectionRef = collection(db, 'admin'); // Assuming your collection is named 'admin'
+      const q = query(adminCollectionRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        toast.error('Admin user not found.');
+        setIsLoading(false);
         return;
       }
-      
-      toast.error('Invalid admin credentials. Please try again.');
-    }, 1000);
+
+      // Assuming email is unique, there should only be one doc
+      const adminDoc = querySnapshot.docs[0];
+      const adminData = adminDoc.data();
+
+      // 2. Compare the entered password with the stored hashed password
+      const passwordMatch = await bcrypt.compare(password, adminData.hashedPassword);
+
+      if (passwordMatch) {
+        toast.success('Admin login successful!');
+        navigate('/admin-dashboard');
+      } else {
+        toast.error('Invalid admin credentials. Please try again.');
+      }
+    } catch (error) {
+      console.error("Admin login error:", error);
+      toast.error('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -98,13 +120,6 @@ const AdminLogin = () => {
                 {isLoading ? "Logging in..." : "Login as Administrator"}
               </Button>
             </form>
-            
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                For demo purposes:<br/>
-                Admin: admin@test.com / password
-              </p>
-            </div>
           </div>
         </div>
       </div>
