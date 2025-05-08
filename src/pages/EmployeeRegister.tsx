@@ -24,6 +24,7 @@ const EmployeeRegister = () => {
     "IT",
     "Customer Support",
     "Human Resources",
+    "Logistics",
     "Finance",
   ]
 
