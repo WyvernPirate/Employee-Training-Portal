@@ -294,16 +294,16 @@ const AdminDashboard = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="department">Department</Label>
-                      <Select defaultValue="mechanical">
+                      <Select defaultValue="Mechanical">
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Departments</SelectItem>
-                          <SelectItem value="mechanical">Mechanical</SelectItem>
-                          <SelectItem value="electrical">Electrical</SelectItem>
-                          <SelectItem value="logistics">Logistics</SelectItem>
-                          <SelectItem value="customer-support">Customer Support</SelectItem>
+                          <SelectItem value="Mechanical">Mechanical</SelectItem>
+                          <SelectItem value="Electrical">Electrical</SelectItem>
+                          <SelectItem value="Logistics">Logistics</SelectItem>
+                          <SelectItem value="Customer Support">Customer Support</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
