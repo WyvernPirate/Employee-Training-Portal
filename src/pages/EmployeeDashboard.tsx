@@ -8,6 +8,7 @@ import TrainingTab from '@/components/dashboard/TrainingTab';
 import CertificatesTab from '@/components/dashboard/CertificatesTab';
 import AssessmentsTab from '@/components/dashboard/AssessmentsTab';
 import { trainingVideos, certificates, assessments } from '@/components/dashboard/mockData';
+import {toast} from 'sonner';
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
@@ -25,13 +26,24 @@ const EmployeeDashboard = () => {
     navigate(`/training-viewer/${videoId}`);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userType');
+    toast.info("You have been logged out.");
+    navigate('/');
+  };
+
+  // In a real app, user's name would come from auth state/context
+  const userName = "John"; 
+
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
+      <DashboardHeader onLogout={handleLogout} userName={userName} />
 
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Welcome, John!</h2>
+          <h2 className="text-3xl font-bold mb-2">Welcome, {userName}</h2>
           <p className="text-gray-600">Continue your learning journey</p>
         </div>
 

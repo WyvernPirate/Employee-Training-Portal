@@ -14,13 +14,6 @@ const Index = () => {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Spare Parts Academy</h1>
           <div className="space-x-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/login')}
-              className="text-black border-white hover:bg-[#ea384c] hover:text-white"
-            >
-              Login
-            </Button>
           </div>
         </div>
       </header>
@@ -34,7 +27,8 @@ const Index = () => {
             <Button 
               onClick={() => navigate('/login')} 
               size="lg"
-              className="bg-white text-[#ea384c] hover:bg-gray-100"
+              variant='outline'
+              className="bg-white text-[#ea384c] hover:bg-black hover:border-black"
             >
               Employee Login
             </Button>
@@ -42,7 +36,7 @@ const Index = () => {
               onClick={() => navigate('/admin-login')} 
               variant="outline" 
               size="lg"
-              className="text-[#ea384c] border-white hover:bg-black hover:border-black"
+              className="text-[#ea384c] bg-white hover:bg-black hover:border-black"
             >
               Administrator Login
             </Button>
