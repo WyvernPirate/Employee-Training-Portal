@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import bcrypt from 'bcryptjs';
@@ -11,6 +11,7 @@ import { db } from '@/firebaseConfig'; // Import your Firestore instance
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,8 +41,11 @@ const AdminLogin = () => {
       const passwordMatch = await bcrypt.compare(password, adminData.hashedPassword);
 
       if (passwordMatch) {
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userType', 'admin');
         toast.success('Admin login successful!');
-        navigate('/admin-dashboard');
+        const from = location.state?.from?.pathname || '/admin-dashboard';
+        navigate(from, { replace: true });
       } else {
         toast.error('Invalid admin credentials. Please try again.');
       }
