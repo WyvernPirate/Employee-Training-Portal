@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
 
 const Login = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,18 +20,14 @@ const Login = () => {
     // Simulate login (in a real app, this would be an API call)
     setTimeout(() => {
       setIsLoading(false);
+      const from = location.state?.from?.pathname || '/employee-dashboard';
       
       // For demo purposes - employee@test.com goes to employee dashboard
       if (email === 'employee@test.com' && password === 'password') {
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userType', 'employee');
         toast.success('Login successful!');
-        navigate('/employee-dashboard');
-        return;
-      }
-      
-      // For demo purposes - admin@test.com goes to admin dashboard
-      if (email === 'admin@test.com' && password === 'password') {
-        toast.success('Login successful!');
-        navigate('/admin-dashboard');
+        navigate(from, { replace: true });
         return;
       }
       
