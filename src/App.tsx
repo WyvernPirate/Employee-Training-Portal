@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Toaster } from '@/components/ui/sonner';
 
 import Index from './pages/Index';
-import Login from './pages/Login';
+import Login from './pages/EmployeeLogin';
 import AdminLogin from './pages/AdminLogin';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import AdminDashboard from './pages/AdminDashboard';
