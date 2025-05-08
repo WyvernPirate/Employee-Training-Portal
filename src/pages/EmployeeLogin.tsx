@@ -1,38 +1,60 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import bcrypt from 'bcryptjs';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
+import { db } from '@/firebaseConfig'; 
 
-const Login = () => {
+const EmployeeLogin = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    toast.dismiss(); // Clear previous toasts
     
-    // Simulate login (in a real app, this would be an API call)
-    setTimeout(() => {
+      try {
+        // 1. Query Firestore for the employee user by email
+        const employeesCollectionRef = collection(db, 'employees'); // Assuming your collection is named 'employees'
+        const q = query(employeesCollectionRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+  
+        if (querySnapshot.empty) {
+          toast.error('Employee not found.');
+          setIsLoading(false);
+          return;
+        }
+  
+        // Assuming email is unique, there should only be one doc
+        const employeeDoc = querySnapshot.docs[0];
+        const employeeData = employeeDoc.data();
+  
+        // 2. Compare the entered password with the stored hashed password
+        const passwordMatch = await bcrypt.compare(password, employeeData.hashedPassword);
+  
+        if (passwordMatch) {
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('userType', 'employee');
+          toast.success('Login successful!');
+          const from = location.state?.from?.pathname || '/employee-dashboard';
+          navigate(from, { replace: true });
+        } else {
+          toast.error('Invalid credentials. Please try again.');
+        }
+      } catch (error) {
+        console.error("Employee login error:", error);
+        toast.error('An error occurred during login. Please try again.');
+      } finally {
       setIsLoading(false);
-      const from = location.state?.from?.pathname || '/employee-dashboard';
-      
-      // For demo purposes - employee@test.com goes to employee dashboard
-      if (email === 'employee@test.com' && password === 'password') {
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userType', 'employee');
-        toast.success('Login successful!');
-        navigate(from, { replace: true });
-        return;
       }
-      
-      toast.error('Invalid credentials. Please try again.');
-    }, 1000);
   };
 
   return (
@@ -102,13 +124,10 @@ const Login = () => {
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </form>
-            
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                For demo purposes:<br/>
-                Employee: employee@test.com / password<br/>
-                Admin: admin@test.com / password
-              </p>
+            <div className="mt-4 text-center">
+            <p className="text-sm text-gray-400">
+                Login with your employee credentials.
+            </p> 
             </div>
           </div>
         </div>
@@ -117,4 +136,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default EmployeeLogin;
