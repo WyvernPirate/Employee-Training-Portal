@@ -10,7 +10,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import TrainingViewer from './pages/TrainingViewer';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-
+import EmployeeRegister from './pages/EmployeeRegister';
+ 
 // Helper to get current auth status
 const useAuth = () => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
@@ -41,6 +42,14 @@ const App = () => {
             isAuthenticated && userType === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
             isAuthenticated && userType === 'employee' ? <Navigate to="/employee-dashboard" replace /> : // Employees accidentally on /admin-login
             <AdminLogin />
+          } 
+        />
+        <Route 
+          path="/register" 
+          element={ // If already logged in, redirect to their dashboard
+            isAuthenticated && userType === 'employee' ? <Navigate to="/employee-dashboard" replace /> :
+            isAuthenticated && userType === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
+            <EmployeeRegister />
           } 
         />
         
