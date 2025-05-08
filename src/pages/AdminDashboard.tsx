@@ -50,6 +50,9 @@ const AdminDashboard = () => {
   });
 
   const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userType');
+    toast.info("Logged out successfully!");
     navigate('/');
   };
 
