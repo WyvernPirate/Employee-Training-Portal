@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { ArrowLeft, UserPlus } from 'lucide-react';
-import { db } from '@/firebaseConfig'; // Import your Firestore instance
+import { db } from '@/firebaseConfig'; 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const EmployeeRegister = () => {
   const navigate = useNavigate();
@@ -14,7 +15,17 @@ const EmployeeRegister = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [department, setDepartment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const departmentOptions = [
+    "Mechanical",
+    "Electrical",
+    "IT",
+    "Customer Support",
+    "Human Resources",
+    "Finance",
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +40,12 @@ const EmployeeRegister = () => {
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters long.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!department) {
+      toast.error("Please select a department.");
       setIsLoading(false);
       return;
     }
@@ -54,6 +71,7 @@ const EmployeeRegister = () => {
         fullName,
         email,
         hashedPassword,
+        department,
         createdAt: new Date(),
         // You can add more default fields here, e.g., progress: 0, certifications: []
       });
@@ -99,6 +117,21 @@ const EmployeeRegister = () => {
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your.email@company.com" required />
+              </div>
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <Select value={department} onValueChange={setDepartment} required>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departmentOptions.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
