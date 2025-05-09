@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 
 import { db, storage } from '@/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 // Interfaces for Firestore data
@@ -76,7 +76,9 @@ const AdminDashboard = () => {
   // Data states
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [trainingContents, setTrainingContents] = useState<TrainingContent[]>([]);
-  const [assessments, setAssessments] = useState<Assessment[]>([]); // For quizzes
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [totalCertificatesCount, setTotalCertificatesCount] = useState(0);
+  
 
   // Form states for Upload Content
   const [contentTitle, setContentTitle] = useState("");
@@ -136,7 +138,9 @@ useEffect(() => {
       setEmployees(empList.map(e => ({...e, progress: Math.floor(Math.random() * 100), certificationsCount: Math.floor(Math.random() * 5) }))); // Placeholder calculation
 
       // Fetch Training Content
-      const contentSnapshot = await getDocs(collection(db, "training_content"));
+      // Order by creation date descending to get recent items first
+      const trainingContentQuery = query(collection(db, "training_content"), orderBy("createdAt", "desc"));
+      const contentSnapshot = await getDocs(trainingContentQuery);
       const contentList = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingContent));
       // TODO: Calculate views and completions
       setTrainingContents(contentList.map(c => ({...c, views: Math.floor(Math.random() * 100), completions: Math.floor(Math.random() * c.views!) }))); // Placeholder
@@ -145,6 +149,11 @@ useEffect(() => {
       const assessSnapshot = await getDocs(collection(db, "assessments"));
       const assessList = assessSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Assessment));
       setAssessments(assessList);
+
+      // Fetch total number of issued certificates
+      const certsSnapshot = await getDocs(collection(db, "certificates"));
+      setTotalCertificatesCount(certsSnapshot.size);
+ 
 
     } catch (error) {
       console.error("Error fetching admin data:", error);
@@ -303,8 +312,8 @@ useEffect(() => {
                 <CardContent className="pt-2">
                   <div className="flex items-center">
                     <FileText className="h-8 w-8 text-[#ea384c] mr-3" />
-                    <div className="text-3xl font-bold">{employees.reduce((total, emp) => total + (emp.certificationsCount || 0), 0)}</div>
-                  </div>
+                    <div className="text-3xl font-bold">{totalCertificatesCount}</div>
+                   </div>
                 </CardContent>
               </Card>
             </div>
@@ -326,8 +335,9 @@ useEffect(() => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {filteredTrainingContent.slice(0, 5).map((content) => (
-                        <TableRow key={content.id}>
+                    {/* Display the first 5 items from the already sorted and filtered list */}
+                    {filteredTrainingContent.slice(0, 5).map((content) => ( 
+                         <TableRow key={content.id}>
                           <TableCell className="font-medium">{content.title}</TableCell>
                           <TableCell>
                             {content.contentType === 'video' ?
