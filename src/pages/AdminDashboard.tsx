@@ -544,7 +544,7 @@ useEffect(() => {
       {/* Header */}
       <header className="bg-[#000000] text-white p-4 sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Spare Parts Academy - Admin</h1>
+          <h1 className="text-2xl font-bold">Spare Parts Classroom - Admin</h1>
           <div className="flex items-center space-x-4">
             <span className="hidden md:inline-block">Administrator</span>
             <Button
