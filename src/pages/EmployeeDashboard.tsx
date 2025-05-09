@@ -62,6 +62,7 @@ const EmployeeDashboard = () => {
   const [trainingVideos, setTrainingVideos] = useState<TrainingVideo[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  
 
   const employeeId = localStorage.getItem('employeeId');
   const cachedFullName = localStorage.getItem('employeeFullName');
