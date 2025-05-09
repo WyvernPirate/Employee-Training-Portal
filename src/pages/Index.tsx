@@ -12,7 +12,7 @@ const Index = () => {
       {/* Header */}
       <header className="bg-[#000000] text-white p-4">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Spare Parts Academy</h1>
+          <h1 className="text-2xl font-bold">Spare Parts Classroom</h1>
           <div className="space-x-4">
           </div>
         </div>
@@ -89,11 +89,11 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h2 className="text-xl font-bold">Spare Parts Academy</h2>
+              <h2 className="text-xl font-bold">Spare Parts Classroom</h2>
               <p className="text-sm text-gray-300">Automotive Training Excellence</p>
             </div>
             <div className="text-sm text-gray-300">
-              &copy; {new Date().getFullYear()} Spare Parts Academy. All rights reserved.
+              &copy; {new Date().getFullYear()} Spare Parts Classroom. All rights reserved.
             </div>
           </div>
         </div>
