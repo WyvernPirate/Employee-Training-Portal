@@ -54,7 +54,7 @@ export interface TrainingContent {
   completions: number; // Should be initialized to 0
 }
 
-interface Assessment {
+export interface Assessment {
   id: string;
   title: string;
   description?: string;
