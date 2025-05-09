@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,7 +103,9 @@ const AdminDashboard = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isDraggingContent, setIsDraggingContent] = useState(false);
+  const contentFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false);
+  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Form states for Create Quiz
   const [quizTitle, setQuizTitle] = useState("");
@@ -816,8 +818,18 @@ useEffect(() => {
                            Video: Video files (max 500MB)<br />
                             PDF: PDF files (max 50MB)
                         </p>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => contentFileInputRef.current?.click()}
+                        >
+                          Choose File
+                        </Button>
                       </div>
                      <Input 
+                        ref={contentFileInputRef}
                         id="content-file-input" 
                         type="file" 
                         accept=".mp4,.mov,.avi,.mkv,.webm,.pdf" // Expanded video types slightly
@@ -849,8 +861,18 @@ useEffect(() => {
                         <p className="text-xs text-gray-500">
                           Accepted: PNG, JPG, GIF (max 2MB recommended)
                         </p>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => thumbnailFileInputRef.current?.click()}
+                        >
+                          Choose Thumbnail
+                        </Button>
                       </div>
-                      <Input 
+                      <Input
+                        ref={thumbnailFileInputRef} 
                         id="thumbnail-input" 
                         type="file" 
                         accept="image/png, image/jpeg, image/gif, image/webp" 
