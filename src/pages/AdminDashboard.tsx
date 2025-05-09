@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import EmployeeDetailsModal from '@/components/admin/EmployeeDetailsModal';
 
 import { db, storage } from '@/firebaseConfig';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy } from "firebase/firestore";
@@ -112,9 +113,19 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
 
+  // State for Employee Details Modal
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+
+
 useEffect(() => {
     fetchAdminData();
   }, []);
+
+  const handleViewEmployeeDetails = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsEmployeeModalOpen(true);
+  };
 
   // Filter employees based on search and department
   const filteredEmployees = employees.filter(employee => {
@@ -529,7 +540,11 @@ useEffect(() => {
                           </TableCell>
                           <TableCell>{employee.certificationsCount || 0}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">View Details</Button>
+                          <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewEmployeeDetails(employee)}
+                            >View Details</Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -757,6 +772,11 @@ useEffect(() => {
           </TabsContent>
         </Tabs>
       </div>
+      <EmployeeDetailsModal 
+        employee={selectedEmployee}
+        isOpen={isEmployeeModalOpen}
+        onClose={() => setIsEmployeeModalOpen(false)}
+      />
     </div>
   );
 };
