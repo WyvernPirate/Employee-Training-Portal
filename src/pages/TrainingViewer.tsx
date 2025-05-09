@@ -7,7 +7,7 @@ import { Star, ArrowLeft, CheckCircle, Loader2, HelpCircle } from 'lucide-react'
 import { toast } from "sonner";
 import { doc, getDoc, updateDoc, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
-import ReactPlayer from 'react-player/youtube'; // Or your preferred player
+import ReactPlayer from 'react-player'; // Or your preferred player
 
 interface TrainingContentData {
   id: string;
@@ -159,8 +159,8 @@ const TrainingViewer = () => {
 
   // Log the fileUrl for video content to help debug
   if (content.contentType === 'video') {
-   console.log("TrainingViewer (render): Attempting to load video. Content details:", content);
-  }
+  console.log("TrainingViewer (render): Preparing to render ReactPlayer. fileUrl:", content.fileUrl, "Full content object:", content);
+ }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -210,22 +210,31 @@ const TrainingViewer = () => {
               <div className="aspect-video bg-black rounded-md overflow-hidden relative">
                 {/* Using ReactPlayer for broader compatibility, assuming fileUrl is a direct video URL or YouTube link */}
                 <ReactPlayer
+                  key={content.fileUrl} // Add key to force re-mount if URL changes
                   url={content.fileUrl}
                   playing={isPlaying}
                   controls
                   width="100%"
                   height="100%"
                   onProgress={(state) => setVideoProgress(state.played * 100)}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
+                  onReady={() => console.log("ReactPlayer: onReady triggered for URL:", content.fileUrl)}
+                  onStart={() => console.log("ReactPlayer: onStart triggered for URL:", content.fileUrl)}
+                  config={{
+                    file: {
+                      forceVideo: true, // Try forcing it to be treated as a video
+                      attributes: { crossOrigin: 'anonymous' }
+                    }
+                  }}
+                  onPlay={() => { console.log("ReactPlayer: onPlay"); setIsPlaying(true); }}
+                  onPause={() => { console.log("ReactPlayer: onPause"); setIsPlaying(false); }}
                   onEnded={() => {
                     setIsPlaying(false);
                     // Optionally auto-mark as complete or prompt user
                     }}
                   onError={(e) => {
-                    console.error("ReactPlayer Error:", e);
+                    console.error("ReactPlayer Error:", e); 
                     toast.error("Video could not be loaded. Please check the console for details.");
-                 
+ 
                   }}
                 />
               </div>
