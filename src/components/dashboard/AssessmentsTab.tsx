@@ -2,9 +2,10 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, CheckCircle, XCircle, HelpCircle, Lock } from 'lucide-react'; // Added Lock icon
+import { Play, CheckCircle, XCircle, HelpCircle, Lock } from 'lucide-react'; 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate } from 'react-router-dom';
-import { DashboardAssessment } from '@/pages/EmployeeDashboard'; // Use the new interface
+import { DashboardAssessment } from '@/pages/EmployeeDashboard'; 
 
 interface AssessmentsTabProps {
   assessments: DashboardAssessment[];
@@ -81,10 +82,25 @@ const AssessmentsTab = ({ assessments }: AssessmentsTabProps) => {
                     )}
                   </>
                 )}
-                <Button variant="outline" size="sm" className="flex items-center" onClick={() => alert(`Quiz Info for "${assessment.title}":\n- Questions: ${assessment.questionsCount}\n- Passing Score: ${assessment.passingScore}%\n- Time Limit: ${assessment.timeLimitMinutes || 'N/A'} minutes`)}>
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    Quiz Info
-                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center">
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Quiz Info
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto text-sm">
+                    <div className="grid gap-2">
+                      <h4 className="font-medium leading-none">{assessment.title}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Details for this assessment.
+                      </p>
+                      <p><strong>Questions:</strong> {assessment.questionsCount}</p>
+                      <p><strong>Passing Score:</strong> {assessment.passingScore}%</p>
+                      <p><strong>Time Limit:</strong> {assessment.timeLimitMinutes ? `${assessment.timeLimitMinutes} minutes` : "N/A"}</p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardFooter>
           </Card>
