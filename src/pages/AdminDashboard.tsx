@@ -154,6 +154,7 @@ useEffect(() => {
       // Fetch all certificates to count per employee
       const allCertificatesSnapshot = await getDocs(collection(db, "certificates"));
       const allCertificates = allCertificatesSnapshot.docs.map(doc => ({ employeeId: doc.data().employeeId, ...doc.data() }));
+      setTotalCertificatesCount(allCertificates.length);
 
       const processedEmployees = rawEmployeesList.map(emp => {
         const completedCount = emp.completedVideoIds?.length || 0;
@@ -185,7 +186,7 @@ useEffect(() => {
 
       // Fetch total number of issued certificates
       const certsSnapshot = await getDocs(collection(db, "certificates"));
-      setTotalCertificatesCount(certsSnapshot.size);
+      // Removed redundant fetch; totalCertificatesCount is already set above.
  
 
     } catch (error) {
