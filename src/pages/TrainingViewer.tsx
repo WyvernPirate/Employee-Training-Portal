@@ -163,7 +163,7 @@ const TrainingViewer = () => {
             variant="outline"
             size="sm"
             onClick={handleBackToList}
-            className="text-white border-white hover:bg-[#ea384c] hover:border-transparent"
+            className="text-black border-white hover:bg-[#ea384c] hover:border-transparent"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
