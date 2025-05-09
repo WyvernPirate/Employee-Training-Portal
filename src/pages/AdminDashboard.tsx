@@ -18,10 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import EmployeeDetailsModal from '@/components/admin/EmployeeDetailsModal';
 
 import { db, storage } from '@/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { collection, query, where, getDocs, addDoc, deleteDoc as deleteFirestoreDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy } from "firebase/firestore";
+import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import ConfirmDeleteDialog from '@/components/admin/ConfirmDeleteDialog';
 
 // Interfaces for Firestore data
 interface Employee {
@@ -112,9 +114,68 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
 
+  // State for Employee Details Modal
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+
+  // State for Delete Confirmation
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: 'content' | 'quiz', fileUrl?: string, thumbnailUrl?: string } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+
+
+
 useEffect(() => {
     fetchAdminData();
   }, []);
+
+  const handleViewEmployeeDetails = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsEmployeeModalOpen(true);
+  };
+
+  const handleDeleteFileFromStorage = async (fileUrl: string) => {
+    if (!fileUrl) return;
+    try {
+      const fileRef = ref(storage, fileUrl); // Get reference from full URL
+      await deleteObject(fileRef);
+      console.log("File deleted from storage:", fileUrl);
+    } catch (error: any) {
+      // It's okay if the file doesn't exist (e.g., already deleted or URL was incorrect)
+      if (error.code === 'storage/object-not-found') {
+        console.warn("File not found in storage (may have been already deleted):", fileUrl);
+      } else {
+        console.error("Error deleting file from storage:", fileUrl, error);
+        toast.error(`Failed to delete associated file: ${error.message}`);
+      }
+    }
+  };
+
+  const handleDeleteContentInit = (content: TrainingContent) => {
+    setItemToDelete({ id: content.id, type: 'content', fileUrl: content.fileUrl, thumbnailUrl: content.thumbnailUrl });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDeleteItem = async () => {
+    if (!itemToDelete) return;
+    setIsLoading(true); // Use general loading state for simplicity
+    try {
+      if (itemToDelete.type === 'content') {
+        await deleteFirestoreDoc(doc(db, "training_content", itemToDelete.id));
+        if (itemToDelete.fileUrl) await handleDeleteFileFromStorage(itemToDelete.fileUrl);
+        if (itemToDelete.thumbnailUrl) await handleDeleteFileFromStorage(itemToDelete.thumbnailUrl);
+        toast.success("Training content deleted successfully.");
+      }
+      // TODO: Add logic for deleting quizzes (itemToDelete.type === 'quiz')
+      fetchAdminData(); // Refresh data
+    } catch (error) {
+      toast.error("Failed to delete item. " + (error as Error).message);
+    } finally {
+      setIsLoading(false);
+      setIsDeleteDialogOpen(false);
+      setItemToDelete(null);
+    }
+  };
 
   // Filter employees based on search and department
   const filteredEmployees = employees.filter(employee => {
@@ -362,14 +423,6 @@ useEffect(() => {
       </header>
 
       {isLoading && <div className="container mx-auto py-8 px-4 text-center">Loading admin data...</div>}
-
-        {!isLoading && (
-          <div className="container mx-auto py-8 px-4 text-center">
-            <h2 className="text-3xl font-bold mb-2">Welcome to the Admin Dashboard</h2>
-            <p className="text-gray-600">Manage training content and track employee progress</p>
-          </div>
-        )}
-
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Admin Dashboard</h2>
@@ -377,11 +430,12 @@ useEffect(() => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid grid-cols-4 max-w-2xl">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 max-w-3xl"> {/* Adjusted grid for new tab */}
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="content">Upload Content</TabsTrigger>
             <TabsTrigger value="quizzes">Create Quizzes</TabsTrigger>
+            <TabsTrigger value="manageContent">Manage Content</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -529,7 +583,11 @@ useEffect(() => {
                           </TableCell>
                           <TableCell>{employee.certificationsCount || 0}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">View Details</Button>
+                          <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewEmployeeDetails(employee)}
+                            >View Details</Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -755,8 +813,63 @@ useEffect(() => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Manage Content Tab */}
+          <TabsContent value="manageContent">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Training Content</CardTitle>
+                <CardDescription>View, edit, or delete existing training materials.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trainingContents.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">No training content found.</TableCell>
+                      </TableRow>
+                    )}
+                    {trainingContents.map((content) => (
+                      <TableRow key={content.id}>
+                        <TableCell className="font-medium">{content.title}</TableCell>
+                        <TableCell>
+                          <Badge variant={content.contentType === 'video' ? 'default' : 'secondary'}>
+                            {content.contentType.toUpperCase()}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{Array.isArray(content.department) ? content.department.join(', ') : content.department}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => {/* TODO: Implement Edit */ toast.info("Edit functionality coming soon!")}}>Edit</Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteContentInit(content)}>Delete</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+      <EmployeeDetailsModal 
+        employee={selectedEmployee}
+        isOpen={isEmployeeModalOpen}
+        onClose={() => setIsEmployeeModalOpen(false)}
+      />
+       <ConfirmDeleteDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDeleteItem}
+        itemName={itemToDelete?.type === 'content' ? `"${trainingContents.find(tc => tc.id === itemToDelete?.id)?.title || 'this content'}"` : "this item"}
+      />
     </div>
   );
 };
