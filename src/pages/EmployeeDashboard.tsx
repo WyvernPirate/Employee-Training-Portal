@@ -322,8 +322,8 @@ const EmployeeDashboard = () => {
           <p className="text-gray-600">Continue your learning journey</p>
         </div>
 
-        <Tabs defaultValue="overview" onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 max-w-md">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+           <TabsList className="grid grid-cols-2 sm:grid-cols-4 max-w-md">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="training">Training</TabsTrigger>
             <TabsTrigger value="certificates">Certificates</TabsTrigger>
