@@ -25,6 +25,7 @@ import { collection, query, where, getDocs, addDoc, deleteDoc as deleteFirestore
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import ConfirmDeleteDialog from '@/components/admin/ConfirmDeleteDialog';
 import EditContentModal from '@/components/admin/EditContentModal';
+import EditQuizModal from '@/components/admin/EditQuizModal';
 
 // Interfaces for Firestore data
 interface Employee {
@@ -127,6 +128,10 @@ const AdminDashboard = () => {
   const [editingContent, setEditingContent] = useState<TrainingContent | null>(null);
   const [isEditContentModalOpen, setIsEditContentModalOpen] = useState(false);
 
+  // State for Edit Quiz Modal
+  const [editingQuiz, setEditingQuiz] = useState<Assessment | null>(null);
+  const [isEditQuizModalOpen, setIsEditQuizModalOpen] = useState(false);
+
 
 useEffect(() => {
     fetchAdminData();
@@ -168,8 +173,11 @@ useEffect(() => {
         if (itemToDelete.fileUrl) await handleDeleteFileFromStorage(itemToDelete.fileUrl);
         if (itemToDelete.thumbnailUrl) await handleDeleteFileFromStorage(itemToDelete.thumbnailUrl);
         toast.success("Training content deleted successfully.");
+        } else if (itemToDelete.type === 'quiz') {
+        await deleteFirestoreDoc(doc(db, "assessments", itemToDelete.id));
+        toast.success("Quiz deleted successfully.");
       }
-      // TODO: Add logic for deleting quizzes (itemToDelete.type === 'quiz')
+    
       fetchAdminData(); // Refresh data
     } catch (error) {
       toast.error("Failed to delete item. " + (error as Error).message);
@@ -180,6 +188,11 @@ useEffect(() => {
     }
   };
 
+  const handleDeleteQuizInit = (quiz: Assessment) => {
+    setItemToDelete({ id: quiz.id, type: 'quiz' });
+    setIsDeleteDialogOpen(true);
+  };
+  
   const handleEditContentInit = (content: TrainingContent) => {
     setEditingContent(content);
     setIsEditContentModalOpen(true);
@@ -220,6 +233,27 @@ useEffect(() => {
       setEditingContent(null);
     } catch (error) {
       toast.error("Failed to update content. " + (error as Error).message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleEditQuizInit = (quiz: Assessment) => {
+    setEditingQuiz(quiz);
+    setIsEditQuizModalOpen(true);
+  };
+
+  const handleUpdateQuiz = async (quizId: string, updatedData: Partial<Omit<Assessment, 'id' | 'createdAt'>>) => {
+    setIsUploading(true); // Reuse isUploading for saving state
+    try {
+      const quizDocRef = doc(db, "assessments", quizId);
+      await updateDoc(quizDocRef, updatedData);
+      toast.success("Quiz updated successfully!");
+      fetchAdminData(); // Refresh data
+      setIsEditQuizModalOpen(false);
+      setEditingQuiz(null);
+    } catch (error) {
+      toast.error("Failed to update quiz. " + (error as Error).message);
     } finally {
       setIsUploading(false);
     }
@@ -476,12 +510,13 @@ useEffect(() => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 max-w-3xl"> {/* Adjusted grid for new tab */}
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 max-w-4xl"> {/* Adjusted grid for new tab */}
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="content">Upload Content</TabsTrigger>
             <TabsTrigger value="quizzes">Create Quizzes</TabsTrigger>
-            <TabsTrigger value="manageContent">Manage Content</TabsTrigger>
+             <TabsTrigger value="manageContent">Manage Content</TabsTrigger>
+            <TabsTrigger value="manageQuizzes">Manage Quizzes</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -903,6 +938,50 @@ useEffect(() => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Manage Quizzes Tab */}
+          <TabsContent value="manageQuizzes">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Quizzes</CardTitle>
+                <CardDescription>View, edit, or delete existing quizzes.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Questions</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assessments.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">No quizzes found.</TableCell>
+                      </TableRow>
+                    )}
+                    {assessments.map((quiz) => (
+                      <TableRow key={quiz.id}>
+                        <TableCell className="font-medium">{quiz.title}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {Array.isArray(quiz.department) ? quiz.department.join(', ') : quiz.department || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{quiz.questions.length}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => handleEditQuizInit(quiz)}>Edit</Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteQuizInit(quiz)}>Delete</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
       <EmployeeDetailsModal 
@@ -914,13 +993,26 @@ useEffect(() => {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleConfirmDeleteItem}
-        itemName={itemToDelete?.type === 'content' ? `"${trainingContents.find(tc => tc.id === itemToDelete?.id)?.title || 'this content'}"` : "this item"}
+        itemName={
+          itemToDelete?.type === 'content' ? `"${trainingContents.find(tc => tc.id === itemToDelete?.id)?.title || 'this content'}"` :
+          itemToDelete?.type === 'quiz' ? `"${assessments.find(q => q.id === itemToDelete?.id)?.title || 'this quiz'}"` :
+          "this item"
+        }
       />
       <EditContentModal
         isOpen={isEditContentModalOpen}
         onClose={() => setIsEditContentModalOpen(false)}
         contentToEdit={editingContent}
         onSave={handleUpdateTrainingContent}
+        departmentOptions={departmentOptions}
+        isSaving={isUploading} // Reuse isUploading state
+      />
+      <EditQuizModal
+        isOpen={isEditQuizModalOpen}
+        onClose={() => setIsEditQuizModalOpen(false)}
+        quizToEdit={editingQuiz}
+        onSave={handleUpdateQuiz}
+        trainingContentOptions={trainingContents}
         departmentOptions={departmentOptions}
         isSaving={isUploading} // Reuse isUploading state
       />
