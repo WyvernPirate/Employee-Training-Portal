@@ -1,0 +1,10 @@
+[
+  {
+    "origin": [
+      "http://localhost:8081",
+      "https://employee-training-portal-6a36e.web.app"
+    ],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]
