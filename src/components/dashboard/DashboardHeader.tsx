@@ -20,7 +20,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onLogout, userName })
             variant="outline" 
             size="sm" 
             onClick={onLogout}
-            className="text-white border-white hover:bg-[#ea384c] hover:border-transparent"
+            className="text-black border-white hover:bg-[#ea384c] hover:border-transparent"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Logout
