@@ -49,9 +49,8 @@ export interface TrainingContent {
   thumbnailUrl?: string;
   duration?: string;
   createdAt: any; // Firestore Timestamp
-  // Calculated/derived
-  views?: number;
-  completions?: number;
+  views: number; // Should be initialized to 0 when content is created
+  completions: number; // Should be initialized to 0
 }
 
 interface Assessment {
@@ -64,6 +63,7 @@ interface Assessment {
   timeLimitMinutes?: number;
   department?: string | string[];
   createdAt: any; // Firestore Timestamp
+
 }
 
 interface QuizQuestion {
@@ -281,12 +281,8 @@ useEffect(() => {
       // Order by creation date descending to get recent items first
       const trainingContentQuery = query(collection(db, "training_content"), orderBy("createdAt", "desc"));
       const contentSnapshot = await getDocs(trainingContentQuery);
-      const contentList = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingContent));
-      // TODO: Calculate views and completions
-      setTrainingContents(contentList.map(c => {
-        const randomViews = Math.floor(Math.random() * 100);
-        return { ...c, views: randomViews, completions: Math.floor(Math.random() * randomViews) };
-      })); // Placeholder
+      const contentList = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), views: doc.data().views || 0, completions: doc.data().completions || 0 } as TrainingContent));
+      setTrainingContents(contentList);
 
       // Fetch Assessments (Quizzes)
       const assessSnapshot = await getDocs(collection(db, "assessments"));
@@ -354,6 +350,8 @@ useEffect(() => {
         fileUrl: fileUrl,
         thumbnailUrl: thumbnailUrl,
         // duration: "TODO", // Could be extracted from video metadata or entered manually
+        views: 0, // Initialize views
+        completions: 0, // Initialize completions
         createdAt: serverTimestamp(),
         // uploaderId: "currentAdminId" // TODO: Get current admin ID
       });
@@ -556,8 +554,8 @@ useEffect(() => {
                           <TableCell>
                             <Badge variant="outline">{Array.isArray(content.department) ? content.department.join(', ') : content.department}</Badge>
                           </TableCell>
-                          <TableCell>{content.views || 0}</TableCell>
-                          <TableCell>{content.completions || 0}</TableCell>
+                          <TableCell>{content.views}</TableCell>
+                          <TableCell>{content.completions}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
