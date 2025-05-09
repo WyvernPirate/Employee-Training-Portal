@@ -56,6 +56,7 @@ const TrainingViewer = () => {
 
 
   useEffect(() => {
+    console.log("TrainingViewer useEffect: videoId from params:", videoId, "employeeId from localStorage:", employeeId);
     if (!videoId) {
       toast.error("Training content ID is missing.");
       navigate(-1);
@@ -71,13 +72,14 @@ const TrainingViewer = () => {
       setIsLoading(true);
       try {
         const contentRef = doc(db, "training_content", videoId);
+        console.log("TrainingViewer fetchContentAndLogView: Fetching content for ID:", videoId);
         const contentSnap = await getDoc(contentRef);
 
         if (contentSnap.exists()) {
           const contentData = { id: contentSnap.id, ...contentSnap.data() } as TrainingContentData;
           setContent(contentData);
-          // setActiveTab(contentData.contentType); // Set tab based on fetched content type
-
+          console.log("TrainingViewer fetchContentAndLogView: Content data fetched:", contentData);
+          
           // Log view - increment view count
           // Consider adding logic here to only increment view once per user per content
           await updateDoc(contentRef, {
@@ -87,13 +89,16 @@ const TrainingViewer = () => {
           // Check if this user has completed this content
           const employeeRef = doc(db, "employees", employeeId);
           const employeeSnap = await getDoc(employeeRef);
+          console.log("TrainingViewer fetchContentAndLogView: Fetched employee doc for completion check. Exists:", employeeSnap.exists());
           if (employeeSnap.exists()) {
             const completedIds = employeeSnap.data()?.completedVideoIds || [];
             setIsCompletedByCurrentUser(completedIds.includes(videoId));
+            console.log("TrainingViewer fetchContentAndLogView: Is content completed by current user?", completedIds.includes(videoId));
           }
 
           // Fetch associated quiz
           // The relatedTrainingContentId in assessments is stored as "content-THE_ACTUAL_ID"
+          console.log("TrainingViewer fetchContentAndLogView: Fetching associated quiz for contentId:", `content-${videoId}`);
           const assessmentsRef = collection(db, "assessments");
           const quizQuery = query(assessmentsRef, where("relatedTrainingContentId", "==", `content-${videoId}`));
           const quizSnapshot = await getDocs(quizQuery);
@@ -154,9 +159,8 @@ const TrainingViewer = () => {
 
   // Log the fileUrl for video content to help debug
   if (content.contentType === 'video') {
-    console.log("TrainingViewer: Attempting to load video from URL:", content.fileUrl);
+   console.log("TrainingViewer (render): Attempting to load video. Content details:", content);
   }
-
 
   return (
     <div className="min-h-screen bg-gray-50">
