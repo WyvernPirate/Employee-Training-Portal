@@ -76,7 +76,6 @@ const EmployeeRegister = () => {
         hashedPassword,
         department,
         createdAt: new Date(),
-        // You can add more default fields here, e.g., progress: 0, certifications: []
       });
 
       toast.success('Registration successful! Please log in.');
