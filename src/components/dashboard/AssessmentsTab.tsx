@@ -50,12 +50,6 @@ const AssessmentsTab = ({ assessments }: AssessmentsTabProps) => {
                <div className="flex justify-between items-center w-full">
                 {assessment.hasAttempted ? (
                   <div className="flex items-center space-x-2">
-                    {/* Placeholder for "View Results" or "Retake Quiz" if needed */}
-                    {/* Example:
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/quiz-results/${assessment.id}`)}>
-                      <Eye className="mr-2 h-4 w-4" /> View Results
-                    </Button>
-                    */}
                      <p className="text-sm text-gray-500">
                       Attempted on: {assessment.attemptDate ? new Date(assessment.attemptDate).toLocaleDateString() : 'N/A'}
                     </p>
