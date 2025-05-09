@@ -173,7 +173,10 @@ useEffect(() => {
       const contentSnapshot = await getDocs(trainingContentQuery);
       const contentList = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingContent));
       // TODO: Calculate views and completions
-      setTrainingContents(contentList.map(c => ({...c, views: Math.floor(Math.random() * 100), completions: Math.floor(Math.random() * c.views!) }))); // Placeholder
+      setTrainingContents(contentList.map(c => {
+        const randomViews = Math.floor(Math.random() * 100);
+        return { ...c, views: randomViews, completions: Math.floor(Math.random() * randomViews) };
+      })); // Placeholder
 
       // Fetch Assessments (Quizzes)
       const assessSnapshot = await getDocs(collection(db, "assessments"));
