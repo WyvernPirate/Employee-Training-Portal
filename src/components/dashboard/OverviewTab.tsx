@@ -5,15 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Award, BookOpen } from 'lucide-react';
+import { TrainingVideo, Certificate  } from '@/pages/EmployeeDashboard';
 
 interface OverviewTabProps {
   progressPercentage: number;
   completedVideos: number;
   totalVideos: number;
-  certificates: any[];
+  certificates: Certificate[];
   setActiveTab: (tab: string) => void;
-  nextVideo: any;
-  handleStartTraining: (videoId: number) => void;
+  nextVideo?: TrainingVideo | null;
+  handleStartTraining: (videoId: string) => void;
 }
 
 const OverviewTab = ({
