@@ -24,6 +24,7 @@ import { db, storage } from '@/firebaseConfig';
 import { collection, query, where, getDocs, addDoc, deleteDoc as deleteFirestoreDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import ConfirmDeleteDialog from '@/components/admin/ConfirmDeleteDialog';
+import EditContentModal from '@/components/admin/EditContentModal';
 
 // Interfaces for Firestore data
 interface Employee {
@@ -38,7 +39,7 @@ interface Employee {
   certificationsCount?: number;
 }
 
-interface TrainingContent {
+export interface TrainingContent {
   id: string;
   title: string;
   description?: string;
@@ -122,7 +123,9 @@ const AdminDashboard = () => {
   const [itemToDelete, setItemToDelete] = useState<{ id: string; type: 'content' | 'quiz', fileUrl?: string, thumbnailUrl?: string } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-
+  // State for Edit Content Modal
+  const [editingContent, setEditingContent] = useState<TrainingContent | null>(null);
+  const [isEditContentModalOpen, setIsEditContentModalOpen] = useState(false);
 
 
 useEffect(() => {
@@ -174,6 +177,51 @@ useEffect(() => {
       setIsLoading(false);
       setIsDeleteDialogOpen(false);
       setItemToDelete(null);
+    }
+  };
+
+  const handleEditContentInit = (content: TrainingContent) => {
+    setEditingContent(content);
+    setIsEditContentModalOpen(true);
+  };
+
+  const handleUpdateTrainingContent = async (
+    contentId: string,
+    updatedData: Partial<Omit<TrainingContent, 'id' | 'createdAt' | 'views' | 'completions'>>,
+    newContentFile?: File | null,
+    newThumbnailFile?: File | null
+  ) => {
+    if (!editingContent) return;
+
+    setIsUploading(true); // Reuse isUploading for saving state
+    const dataToUpdate = { ...updatedData };
+
+    try {
+      if (newContentFile) {
+        // Delete old content file if it exists
+        if (editingContent.fileUrl) await handleDeleteFileFromStorage(editingContent.fileUrl);
+        // Upload new content file
+        dataToUpdate.fileUrl = await handleFileUpload(newContentFile, `training_content/${dataToUpdate.contentType}s`);
+      }
+
+      if (newThumbnailFile) {
+        // Delete old thumbnail file if it exists
+        if (editingContent.thumbnailUrl) await handleDeleteFileFromStorage(editingContent.thumbnailUrl);
+        // Upload new thumbnail file
+        dataToUpdate.thumbnailUrl = await handleFileUpload(newThumbnailFile, 'training_content/thumbnails');
+      }
+
+      const contentDocRef = doc(db, "training_content", contentId);
+      await updateDoc(contentDocRef, dataToUpdate);
+
+      toast.success("Training content updated successfully!");
+      fetchAdminData();
+      setIsEditContentModalOpen(false);
+      setEditingContent(null);
+    } catch (error) {
+      toast.error("Failed to update content. " + (error as Error).message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -847,8 +895,8 @@ useEffect(() => {
                         </TableCell>
                         <TableCell>{Array.isArray(content.department) ? content.department.join(', ') : content.department}</TableCell>
                         <TableCell className="text-right space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => {/* TODO: Implement Edit */ toast.info("Edit functionality coming soon!")}}>Edit</Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteContentInit(content)}>Delete</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleEditContentInit(content)}>Edit</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteContentInit(content)}>Delete</Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -869,6 +917,14 @@ useEffect(() => {
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleConfirmDeleteItem}
         itemName={itemToDelete?.type === 'content' ? `"${trainingContents.find(tc => tc.id === itemToDelete?.id)?.title || 'this content'}"` : "this item"}
+      />
+      <EditContentModal
+        isOpen={isEditContentModalOpen}
+        onClose={() => setIsEditContentModalOpen(false)}
+        contentToEdit={editingContent}
+        onSave={handleUpdateTrainingContent}
+        departmentOptions={departmentOptions}
+        isSaving={isUploading} // Reuse isUploading state
       />
     </div>
   );
