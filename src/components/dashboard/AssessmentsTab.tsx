@@ -6,17 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from "sonner";
-
-interface Assessment {
-  id: number;
-  title: string;
-  description: string;
-  questions: number;
-  timeLimit: string;
-  course: string;
-  completed: boolean;
-  score: string | null;
-}
+import { Assessment } from '@/pages/EmployeeDashboard';
 
 interface AssessmentsTabProps {
   assessments: Assessment[];
@@ -24,7 +14,7 @@ interface AssessmentsTabProps {
 
 const AssessmentsTab = ({ assessments }: AssessmentsTabProps) => {
   
-  const handleStartQuiz = (quizId: number) => {
+   const handleStartQuiz = (quizId: string) => { // ID is now string
     toast.info("Quiz functionality will be implemented soon!");
   };
 
@@ -36,42 +26,43 @@ const AssessmentsTab = ({ assessments }: AssessmentsTabProps) => {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{assessment.title}</CardTitle>
-                {assessment.completed && (
+                {(assessment.status === 'Completed' || assessment.status === 'Passed' || assessment.status === 'Failed') && (
                   <Badge variant="outline" className="bg-green-500 text-white">
-                    Completed
+                    {assessment.status}
                   </Badge>
                 )}
               </div>
-              <CardDescription>{assessment.description}</CardDescription>
-            </CardHeader>
+              <CardDescription>{assessment.description || "No description available."}</CardDescription>
+             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Related Course:</span>
-                <span>{assessment.course}</span>
+              <span className="text-gray-500">Related Training ID:</span>
+                <span>{assessment.relatedTrainingId || "N/A"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Questions:</span>
-                <span>{assessment.questions}</span>
-              </div>
+                <span>{assessment.questions?.size || "N/A"}</span>
+                </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Time Limit:</span>
                 <span>{assessment.timeLimit}</span>
               </div>
-              {assessment.score && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Your Score:</span>
-                  <span className="font-medium">{assessment.score}</span>
-                </div>
-              )}
+                {assessment.score !== undefined && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Your Score:</span>
+                    <span className="font-medium">{assessment.score}</span>
+                  </div>
+                )}
+  
             </CardContent>
             <CardFooter>
               <div className="flex justify-between w-full items-center">
                 <Button 
-                  className={assessment.completed ? "bg-gray-500" : "bg-[#ea384c] hover:bg-[#d9293d]"}
-                  disabled={assessment.completed}
+                  className={(assessment.status === 'Completed' || assessment.status === 'Passed' || assessment.status === 'Failed') ? "bg-gray-500" : "bg-[#ea384c] hover:bg-[#d9293d]"}
+                  disabled={(assessment.status === 'Completed' || assessment.status === 'Passed' || assessment.status === 'Failed')}
                   onClick={() => handleStartQuiz(assessment.id)}
                 >
-                  {assessment.completed ? (
+                  {(assessment.status === 'Completed' || assessment.status === 'Passed' || assessment.status === 'Failed') ? (
                     <>
                       <CheckCircle2 className="mr-2 h-4 w-4" />
                       Completed
