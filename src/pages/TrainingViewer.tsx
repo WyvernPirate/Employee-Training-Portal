@@ -152,6 +152,11 @@ const TrainingViewer = () => {
     return <div className="min-h-screen flex items-center justify-center"><p>Content not found.</p></div>;
   }
 
+  // Log the fileUrl for video content to help debug
+  if (content.contentType === 'video') {
+    console.log("TrainingViewer: Attempting to load video from URL:", content.fileUrl);
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -212,6 +217,11 @@ const TrainingViewer = () => {
                   onEnded={() => {
                     setIsPlaying(false);
                     // Optionally auto-mark as complete or prompt user
+                    }}
+                  onError={(e) => {
+                    console.error("ReactPlayer Error:", e);
+                    toast.error("Video could not be loaded. Please check the console for details.");
+                 
                   }}
                 />
               </div>
