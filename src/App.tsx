@@ -86,7 +86,7 @@ const App = () => {
         />
         {/* Protected Quiz Taker Route */}
          <Route
-          path="/quiz/:quizId" // This is the important part
+          path="/quiz/:quizId" 
           element={
             <ProtectedRoute allowedRole="employee">
              <QuizTaker key={localStorage.getItem('employeeId') || 'quiz_taker_logged_out'} />
@@ -95,7 +95,7 @@ const App = () => {
           />
         {/* Protected Certificate Viewer Route */}
         <Route
-          path="/certificate/:certificateId" // This is the important part
+          path="/certificate/:certificateId" 
           element={
             <ProtectedRoute allowedRole="employee">
               <CertificateViewer key={localStorage.getItem('employeeId') || 'cert_viewer_logged_out'} />
