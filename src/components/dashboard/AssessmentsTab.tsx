@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, CheckCircle, XCircle, HelpCircle } from 'lucide-react'; // Updated icons
+import { Play, CheckCircle, XCircle, HelpCircle, Lock } from 'lucide-react'; // Added Lock icon
 import { useNavigate } from 'react-router-dom';
 import { DashboardAssessment } from '@/pages/EmployeeDashboard'; // Use the new interface
 
@@ -60,13 +60,26 @@ const AssessmentsTab = ({ assessments }: AssessmentsTabProps) => {
                     </p>
                   </div>
                 ) : (
-                  <Button
-                    className="bg-[#ea384c] hover:bg-[#d9293d]"
-                    onClick={() => navigate(`/quiz/${assessment.id}`)}
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Start Quiz
-                  </Button>
+                 <>
+                    {assessment.isRelatedTrainingComplete === false ? ( // Check if explicitly false
+                      <Button
+                        className="bg-gray-400 text-gray-700 cursor-not-allowed"
+                        disabled
+                        title="Complete the related training first"
+                      >
+                        <Lock className="mr-2 h-4 w-4" />
+                        Locked
+                      </Button>
+                    ) : (
+                      <Button
+                        className="bg-[#ea384c] hover:bg-[#d9293d]"
+                        onClick={() => navigate(`/quiz/${assessment.id}`)}
+                      >
+                        <Play className="mr-2 h-4 w-4" />
+                        Start Quiz
+                      </Button>
+                    )}
+                  </>
                 )}
                 <Button variant="outline" size="sm" className="flex items-center" onClick={() => alert(`Quiz Info for "${assessment.title}":\n- Questions: ${assessment.questionsCount}\n- Passing Score: ${assessment.passingScore}%\n- Time Limit: ${assessment.timeLimitMinutes || 'N/A'} minutes`)}>
                     <HelpCircle className="h-4 w-4 mr-2" />
