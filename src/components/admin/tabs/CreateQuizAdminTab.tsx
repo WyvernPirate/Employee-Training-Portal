@@ -69,7 +69,7 @@ const CreateQuizAdminTab: React.FC<CreateQuizAdminTabProps> = ({
             <Select value={quizRelatedContent} onValueChange={setQuizRelatedContent}>
               <SelectTrigger><SelectValue placeholder="Select content" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none-value">None</SelectItem>
                 {trainingContents.map(content => (
                   <SelectItem key={content.id} value={`content-${content.id}`}>
                     {content.title} ({content.contentType})
