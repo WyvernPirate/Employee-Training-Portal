@@ -21,7 +21,7 @@ const Index = () => {
       {/* Hero Section */}
       <section className="bg-[#ea384c] text-white py-20">
         <div className="container mx-auto text-center px-4">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">Automotive Spare Parts Training Portal</h1>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">Automotive Spare Parts Training Classroom</h1>
           <p className="text-xl md:text-2xl mb-8">Empowering employees with knowledge and certification</p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
             <Button 
