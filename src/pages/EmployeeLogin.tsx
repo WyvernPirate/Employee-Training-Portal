@@ -43,6 +43,11 @@ const EmployeeLogin = () => {
         if (passwordMatch) {
           localStorage.setItem('isAuthenticated', 'true');
           localStorage.setItem('userType', 'employee');
+          localStorage.setItem('employeeId', employeeDoc.id);
+          const constructedFullName = (employeeData.firstName && employeeData.surname) ? `${employeeData.firstName} ${employeeData.surname}` : (employeeData.fullName || 'Employee');
+          localStorage.setItem('employeeFullName', constructedFullName);
+          localStorage.setItem('employeeDepartment', employeeData.department || '');
+          localStorage.setItem('employeeEmail', employeeData.email || '');
           toast.success('Login successful!');
           const from = location.state?.from?.pathname || '/employee-dashboard';
           navigate(from, { replace: true });
