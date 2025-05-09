@@ -18,43 +18,42 @@ export interface TrainingVideo {
   description: string;
   duration?: string;
   thumbnailUrl: string;
-  fileUrl: string; // This is the actual content URL (video or PDF)
+  fileUrl: string; 
   contentType: 'video' | 'pdf';
   department?: string | string[]; // For filtering
-  order?: number; // For sequencing
-  completed?: boolean; // This will be derived based on employee's progress
+  order?: number; 
+  completed?: boolean; 
 }
 
 export interface Certificate {
   id: string; // Firestore document ID
   title: string;
-  issuedDate: any; // Firestore Timestamp (will be converted to Date)
-  expiryDate?: any; // Firestore Timestamp (optional)
+  issuedDate: any; 
+  expiryDate?: any; 
   issuingBody: string;
   certificateUrl?: string; // URL to the certificate file
-  relatedTrainingContentId?: string; // ID of content in training_content
+  relatedTrainingContentId?: string; 
 }
 
 export interface DashboardAssessment {
-  id: string; // Firestore document ID
+  id: string; 
   title: string;
   description?: string;
   relatedTrainingContentId?: string;
   timeLimitMinutes?: number;
   passingScore: number;
   questionsCount: number;
-  // Employee-specific attempt data
-  attemptStatus?: 'Passed' | 'Failed'; // Derived from employee_assessment_results
+  attemptStatus?: 'Passed' | 'Failed'; 
   attemptScore?: number;
   attemptDate?: Date;
-  hasAttempted: boolean; // True if a result exists in employee_assessment_results
-  isRelatedTrainingComplete?: boolean; // True if the related training content is completed
+  hasAttempted: boolean; 
+  isRelatedTrainingComplete?: boolean; 
 }
 
 interface EmployeeData {
   fullName: string;
   department: string;
-  completedVideoIds?: string[]; // Array of TrainingVideo IDs
+  completedVideoIds?: string[]; 
 }
 
 const EmployeeDashboard = () => {
@@ -218,7 +217,7 @@ const EmployeeDashboard = () => {
       console.log("fetchDashboardData: Employee quiz attempts snapshot size:", attemptsSnapshot.size);
       const employeeAttemptsMap = new Map<string, any>();
       attemptsSnapshot.forEach(docSnap => { 
-        const attempt = docSnap.data() as Record<string, any>; // Added cast
+        const attempt = docSnap.data() as Record<string, any>; 
         const attemptQuizId = attempt.quizId as string;
         if (attemptQuizId) { 
             const existingAttempt = employeeAttemptsMap.get(attemptQuizId);
@@ -237,7 +236,6 @@ const EmployeeDashboard = () => {
       const dashboardAssessments = quizDefinitions.map(quizDef => {
         let relatedTrainingComplete = true; // Default to true if no related content
         if (quizDef.relatedTrainingContentId) {
-          // The relatedTrainingContentId is stored as "content-THE_ACTUAL_ID"
           const actualContentId = quizDef.relatedTrainingContentId.replace('content-', '');
           relatedTrainingComplete = currentEmployeeData.completedVideoIds?.includes(actualContentId) || false;
         }
@@ -267,7 +265,7 @@ const EmployeeDashboard = () => {
       console.log("fetchDashboardData: Successfully completed all fetches and processing.");
 
     } catch (error) {
-      // THIS IS THE CRITICAL LOG. CHECK YOUR BROWSER CONSOLE FOR THIS.
+      // Handle errors gracefully
       console.error("Error fetching dashboard data:", error); 
       toast.error("Failed to load dashboard data. Please try again.");
     } finally {

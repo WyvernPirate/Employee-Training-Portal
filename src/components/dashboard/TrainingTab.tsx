@@ -34,7 +34,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ trainingVideos, handleStartTr
             </CardHeader>
             <CardContent className="pt-4 flex-grow">
               <CardTitle className="text-lg mb-1 line-clamp-2">{video.title}</CardTitle>
-              <CardDescription className="text-sm text-gray-600 line-clamp-3 mb-2 h-16"> {/* Fixed height for description */}
+              <CardDescription className="text-sm text-gray-600 line-clamp-3 mb-2 h-16">
                 {video.description}
               </CardDescription>
               {video.duration && (

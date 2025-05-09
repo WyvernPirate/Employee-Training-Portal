@@ -24,9 +24,7 @@ const CertificatesTab = ({ certificates, setActiveTab }: CertificatesTabProps) =
                 <Award className="h-16 w-16 text-[#ea384c] mx-auto mb-2" />
                <CardTitle>{certificate.title}</CardTitle>                
                 <CardDescription>Related Training ID: {certificate.relatedTrainingContentId || "N/A"}</CardDescription>
-                {/* Or, if you add a 'courseName' field to your Certificate interface based on relatedTrainingId: 
-                <CardDescription>Issued for completion of {certificate.courseName || "General Training"}</CardDescription> */}
-              </CardHeader>
+               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
