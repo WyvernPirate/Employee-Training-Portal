@@ -12,6 +12,7 @@ import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import EmployeeRegister from './pages/EmployeeRegister';
 import QuizTaker from './pages/QuizTaker';
+import CertificateViewer from './pages/CertificateViewer';
  
 // Helper to get current auth status
 const useAuth = () => {
@@ -90,6 +91,16 @@ const App = () => {
             </ProtectedRoute>
           }
           />
+        {/* Protected Certificate Viewer Route */}
+        <Route
+          path="/certificate/:certificateId" // This is the important part
+          element={
+            <ProtectedRoute allowedRole="employee">
+              <CertificateViewer />
+            </ProtectedRoute>
+          }
+          />
+
         {/* Not Found Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
