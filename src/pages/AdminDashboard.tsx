@@ -63,6 +63,13 @@ interface Assessment {
   createdAt: any; // Firestore Timestamp
 }
 
+interface QuizQuestion {
+  id: string; // For React key, e.g., using Date.now().toString() or a UUID
+  questionText: string;
+  options: string[];
+  correctAnswerIndex: number; // Index of the correct option
+}
+
 const departmentOptions = [
   "Mechanical", "Electrical", "IT", "Customer Support",
   "Human Resources", "Logistics", "Finance", "All"
@@ -93,9 +100,13 @@ const AdminDashboard = () => {
   // Form states for Create Quiz
   const [quizTitle, setQuizTitle] = useState("");
   const [quizRelatedContent, setQuizRelatedContent] = useState("");
-  // Basic quiz questions structure - can be expanded
-  const [quizQuestions, setQuizQuestions] = useState([{ questionText: "", options: ["", "", "", ""], correctAnswerIndex: 0 }]);
+  const [quizDescription, setQuizDescription] = useState("");
+  const [quizDepartment, setQuizDepartment] = useState(departmentOptions[0]);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([
+    { id: Date.now().toString(), questionText: "", options: ["", "", "", ""], correctAnswerIndex: 0 }
+  ]);
   const [quizPassingScore, setQuizPassingScore] = useState(70);
+  const [quizTimeLimit, setQuizTimeLimit] = useState<number | null>(30); // in minutes
 
   // Filtering states
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,10 +143,29 @@ useEffect(() => {
     setIsLoading(true);
     try {
       // Fetch Employees
-      const empSnapshot = await getDocs(collection(db, "employees"));
-      const empList = empSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-      // TODO: Calculate progress and certificationsCount for each employee
-      setEmployees(empList.map(e => ({...e, progress: Math.floor(Math.random() * 100), certificationsCount: Math.floor(Math.random() * 5) }))); // Placeholder calculation
+      const employeesSnapshot = await getDocs(collection(db, "employees"));
+      const rawEmployeesList = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+
+      // Fetch all training content to calculate progress (we might already have this, but let's ensure)
+      const allTrainingContentSnapshot = await getDocs(collection(db, "training_content"));
+      const allTrainingVideos = allTrainingContentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const totalNumberOfTrainings = allTrainingVideos.length;
+
+      // Fetch all certificates to count per employee
+      const allCertificatesSnapshot = await getDocs(collection(db, "certificates"));
+      const allCertificates = allCertificatesSnapshot.docs.map(doc => ({ employeeId: doc.data().employeeId, ...doc.data() }));
+
+      const processedEmployees = rawEmployeesList.map(emp => {
+        const completedCount = emp.completedVideoIds?.length || 0;
+        const progress = totalNumberOfTrainings > 0 ? Math.round((completedCount / totalNumberOfTrainings) * 100) : 0;
+        const certificationsCount = allCertificates.filter(cert => cert.employeeId === emp.id).length;
+        return {
+          ...emp,
+          progress,
+          certificationsCount,
+        };
+      });
+      setEmployees(processedEmployees);
 
       // Fetch Training Content
       // Order by creation date descending to get recent items first
@@ -228,11 +258,83 @@ useEffect(() => {
   };
 
 
-  const handleQuizCreation = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Quiz created successfully!");
-    // In a real app, this would send the form data to an API
+  const handleAddQuestion = () => {
+    setQuizQuestions([
+      ...quizQuestions,
+      { id: Date.now().toString(), questionText: "", options: ["", "", "", ""], correctAnswerIndex: 0 }
+    ]);
   };
+
+  const handleRemoveQuestion = (questionId: string) => {
+    setQuizQuestions(quizQuestions.filter(q => q.id !== questionId));
+  };
+
+  const handleQuestionTextChange = (questionId: string, value: string) => {
+    setQuizQuestions(quizQuestions.map(q =>
+      q.id === questionId ? { ...q, questionText: value } : q
+    ));
+  };
+
+  const handleOptionChange = (questionId: string, optionIndex: number, value: string) => {
+    setQuizQuestions(quizQuestions.map(q =>
+      q.id === questionId ? {
+        ...q,
+        options: q.options.map((opt, i) => i === optionIndex ? value : opt)
+      } : q
+    ));
+  };
+
+  const handleCorrectAnswerChange = (questionId: string, optionIndex: number) => {
+    setQuizQuestions(quizQuestions.map(q =>
+      q.id === questionId ? { ...q, correctAnswerIndex: optionIndex } : q
+    ));
+  };
+
+  const handleQuizCreation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quizQuestions.some(q => !q.questionText.trim() || q.options.some(opt => !opt.trim()))) {
+      toast.error("Please fill out all question texts and options.");
+      return;
+    }
+    if (quizQuestions.length === 0) {
+      toast.error("A quiz must have at least one question.");
+      return;
+    }
+
+    setIsUploading(true); // Reuse isUploading state for quiz creation
+    try {
+      const newQuizData = {
+        title: quizTitle,
+        description: quizDescription,
+        relatedTrainingContentId: quizRelatedContent || null, // Store null if not selected
+        department: quizDepartment,
+        questions: quizQuestions.map(({ id, ...rest }) => rest), // Remove temporary id before saving
+        passingScore: quizPassingScore,
+        timeLimitMinutes: quizTimeLimit,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, "assessments"), newQuizData);
+
+      toast.success("Quiz created successfully!");
+      // Reset form
+      setQuizTitle("");
+      setQuizDescription("");
+      setQuizRelatedContent("");
+      setQuizDepartment(departmentOptions[0]);
+      setQuizQuestions([{ id: Date.now().toString(), questionText: "", options: ["", "", "", ""], correctAnswerIndex: 0 }]);
+      setQuizPassingScore(70);
+      setQuizTimeLimit(30);
+      fetchAdminData(); // Refresh assessments list (if you display it)
+
+    } catch (error) {
+      console.error("Error creating quiz:", error);
+      toast.error("Failed to create quiz. " + (error as Error).message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -549,6 +651,11 @@ useEffect(() => {
                     </div>
 
                   <div className="space-y-2">
+                  <Label htmlFor="quiz-description">Quiz Description (optional)</Label>
+                    <Textarea id="quiz-description" value={quizDescription} onChange={(e) => setQuizDescription(e.target.value)} placeholder="Enter a brief description for the quiz" rows={2} />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="related-content">Related Training Content</Label>
                     <Select value={quizRelatedContent} onValueChange={setQuizRelatedContent}>
                     <SelectTrigger>
@@ -563,33 +670,62 @@ useEffect(() => {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
-                    {/* TODO: Dynamic Question Adding/Editing UI */}
+                      <Label htmlFor="quiz-department">Department</Label>
+                      <Select value={quizDepartment} onValueChange={setQuizDepartment}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department for this quiz" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departmentOptions.map(dept => (
+                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  <div className="space-y-2">
                     <Label>Questions</Label>
                     <div className="space-y-4">
-                      <div className="border rounded-md p-4">
-                        <div className="space-y-2 mb-4">
-                          <Label htmlFor="question-1">Question 1</Label>
-                          <Input id="question-1" placeholder="Enter question" required />
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 mb-2">
-                            <input type="radio" id="q1-correct" name="q1-answer" defaultChecked />
-                            <Input placeholder="Correct answer" required />
-                          </div>
-
-                          {[1, 2, 3].map(i => (
-                            <div key={i} className="flex items-center gap-2 mb-2">
-                              <input type="radio" id={`q1-option-${i}`} name="q1-answer" />
-                              <Input placeholder={`Option ${i}`} required />
+                    {quizQuestions.map((question, qIndex) => (
+                       <Card key={question.id} className="p-4">
+                       <div className="flex justify-between items-center mb-2">
+                         <Label htmlFor={`question-${question.id}`}>Question {qIndex + 1}</Label>
+                         {quizQuestions.length > 1 && (
+                           <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveQuestion(question.id)}>
+                             Remove
+                           </Button>
+                         )}
+                       </div>
+                       <Textarea
+                            id={`question-${question.id}`}
+                            placeholder="Enter question text"
+                            value={question.questionText}
+                            onChange={(e) => handleQuestionTextChange(question.id, e.target.value)}
+                            required
+                            className="mb-2"
+                        />
+                        <Label className="text-sm">Options (Mark correct answer):</Label>
+                        {question.options.map((option, oIndex) => (
+                            <div key={oIndex} className="flex items-center gap-2 mt-1">
+                              <input
+                                type="radio"
+                                id={`q${question.id}-opt${oIndex}`}
+                                name={`q${question.id}-correct`}
+                                checked={question.correctAnswerIndex === oIndex}
+                                onChange={() => handleCorrectAnswerChange(question.id, oIndex)}
+                                className="form-radio h-4 w-4 text-[#ea384c] focus:ring-[#ea384c]"
+                              />
+                              <Input
+                                placeholder={`Option ${oIndex + 1}`}
+                                value={option}
+                                onChange={(e) => handleOptionChange(question.id, oIndex, e.target.value)}
+                                required
+                              />
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <Button type="button" variant="outline" className="w-full">
+                        ))} 
+                        </Card>
+                      ))}
+                      <Button type="button" variant="outline" className="w-full" onClick={handleAddQuestion}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Question
                       </Button>
@@ -604,12 +740,12 @@ useEffect(() => {
 
                     <div className="space-y-2">
                       <Label htmlFor="time-limit">Time Limit (minutes)</Label>
-                      <Input id="time-limit" type="number" min="1" defaultValue="30" required />
+                      <Input id="time-limit" type="number" min="1" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(parseInt(e.target.value))} required />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full">
-                    Create Quiz
+                  <Button type="submit" className="w-full" disabled={isUploading}>
+                     Create Quiz
                   </Button>
                 </form>
               </CardContent>
