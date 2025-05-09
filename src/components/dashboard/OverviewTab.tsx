@@ -1,10 +1,8 @@
-
-import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BookOpen, Award, PlayCircle, ListChecks } from 'lucide-react';
-import { TrainingVideo } from '@/pages/EmployeeDashboard'; // Import the interface
+import { TrainingVideo } from '@/pages/EmployeeDashboard'; 
 
 interface OverviewTabProps {
   progressPercentage: number;
@@ -13,9 +11,9 @@ interface OverviewTabProps {
   certificatesEarned: number;
   pendingAssessmentsCount: number;
   passedAssessmentsCount: number;
-  nextTrainingItem?: TrainingVideo | null; // Updated from nextVideo
+  nextTrainingItem?: TrainingVideo | null; 
   setActiveTab: (tab: string) => void;
-  handleStartTraining: (trainingId: string) => void; // Updated from videoId
+  handleStartTraining: (trainingId: string) => void; 
 }
 
 const OverviewTab = ({
