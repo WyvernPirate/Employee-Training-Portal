@@ -101,6 +101,7 @@ const AdminDashboard = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isDraggingContent, setIsDraggingContent] = useState(false);
+  const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false);
 
   // Form states for Create Quiz
   const [quizTitle, setQuizTitle] = useState("");
@@ -432,6 +433,33 @@ useEffect(() => {
     }
   };
 
+  // Drag and Drop Handlers for Thumbnail File
+  const handleThumbnailDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingThumbnail(true);
+  };
+
+  const handleThumbnailDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingThumbnail(false);
+  };
+
+  const handleThumbnailDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingThumbnail(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFile = e.dataTransfer.files[0];
+      if (droppedFile.type.startsWith("image/")) {
+        setThumbnailFile(droppedFile);
+      } else {
+        toast.error("Invalid file type. Please upload an image (PNG, JPG, GIF).");
+      }
+      e.dataTransfer.clearData();
+    }
+  };
 
   const handleAddQuestion = () => {
     setQuizQuestions([
@@ -776,7 +804,7 @@ useEffect(() => {
                           {isDraggingContent && <span className="text-blue-600 font-semibold"> Release to drop!</span>}
                         </p>
                         <p className="text-xs text-gray-500">
-                           Accepted: MP4, MOV, AVI<br />
+                           Accepted: MP4, MOV, AVI, PDF<br />
                            Video: Video files (max 500MB)<br />
                             PDF: PDF files (max 50MB)
                         </p>
@@ -798,16 +826,31 @@ useEffect(() => {
 
                   <div className="space-y-2">
                   <Label htmlFor="thumbnail-input">Thumbnail Image (optional)</Label>
-                    <div className="border-2 border-dashed rounded-md p-4 text-center">
-                      <p className="text-sm text-gray-500">
-                        Click to upload or drag and drop a thumbnail image
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF (max 2MB)
-                      </p>
-                      <Input id="thumbnail-input" type="file" accept="image/*" onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)} className="mt-2" />
-                      {thumbnailFile && <p className="text-sm text-gray-700 mt-1">Selected: {thumbnailFile.name}</p>}
-                    </div>
+                    <div
+                      className={`border-2 border-dashed rounded-md p-6 text-center transition-colors ${isDraggingThumbnail ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+                      onDragOver={handleThumbnailDragOver}
+                      onDragLeave={handleThumbnailDragLeave}
+                      onDrop={handleThumbnailDrop}
+                    >
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <FileText className="h-10 w-10 text-gray-400" /> {/* Using FileText as a generic icon for image */}
+                        <p className="text-sm text-gray-500">
+                          Click to upload or drag and drop a thumbnail image
+                          {isDraggingThumbnail && <span className="text-blue-600 font-semibold"> Release to drop!</span>}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Accepted: PNG, JPG, GIF (max 2MB recommended)
+                        </p>
+                      </div>
+                      <Input 
+                        id="thumbnail-input" 
+                        type="file" 
+                        accept="image/png, image/jpeg, image/gif, image/webp" 
+                        onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)} 
+                        className="sr-only" 
+                      />
+                      {thumbnailFile && <p className="text-sm text-green-600 mt-2">Selected: {thumbnailFile.name}</p>}
+                     </div>
                   </div>
 
                   {isUploading && (
