@@ -22,7 +22,9 @@ const useAuth = () => {
 };
 
 const App = () => {
-  const { isAuthenticated, userType } = useAuth();
+   
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+  const userType = localStorage.getItem('userType') as 'employee' | 'admin' | null;
 
   return (
     <Router>
@@ -60,7 +62,7 @@ const App = () => {
           path="/employee-dashboard" 
           element={
             <ProtectedRoute allowedRole="employee">
-              <EmployeeDashboard />
+               <EmployeeDashboard key={localStorage.getItem('employeeId') || 'employee_logged_out'} />
             </ProtectedRoute>
           } 
         />
@@ -68,8 +70,8 @@ const App = () => {
           path="/training-viewer/:videoId" 
           element={
             <ProtectedRoute allowedRole="employee">
-              <TrainingViewer />
-            </ProtectedRoute>
+              <TrainingViewer key={localStorage.getItem('employeeId') || 'employee_viewer_logged_out'} />
+             </ProtectedRoute>
           } 
         />
 
@@ -78,7 +80,7 @@ const App = () => {
           path="/admin-dashboard" 
           element={
             <ProtectedRoute allowedRole="admin">
-              <AdminDashboard />
+              <AdminDashboard key={userType === 'admin' ? 'admin_session_active' : 'admin_logged_out'} />
             </ProtectedRoute>
           } 
         />
@@ -87,8 +89,8 @@ const App = () => {
           path="/quiz/:quizId" // This is the important part
           element={
             <ProtectedRoute allowedRole="employee">
-              <QuizTaker />
-            </ProtectedRoute>
+             <QuizTaker key={localStorage.getItem('employeeId') || 'quiz_taker_logged_out'} />
+           </ProtectedRoute>
           }
           />
         {/* Protected Certificate Viewer Route */}
@@ -96,8 +98,8 @@ const App = () => {
           path="/certificate/:certificateId" // This is the important part
           element={
             <ProtectedRoute allowedRole="employee">
-              <CertificateViewer />
-            </ProtectedRoute>
+              <CertificateViewer key={localStorage.getItem('employeeId') || 'cert_viewer_logged_out'} />
+             </ProtectedRoute>
           }
           />
 
