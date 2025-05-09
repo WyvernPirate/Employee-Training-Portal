@@ -35,6 +35,7 @@ const QuizTaker = () => {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [passedQuiz, setPassedQuiz] = useState<boolean | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); 
 
   const employeeId = localStorage.getItem('employeeId');
 
@@ -61,6 +62,9 @@ const QuizTaker = () => {
           // Shuffle questions if desired: quizData.questions.sort(() => Math.random() - 0.5);
           setQuiz(quizData);
           setUserAnswers(new Array(quizData.questions.length).fill(-1)); // Initialize answers
+          if (quizData.timeLimitMinutes) {
+            setTimeLeft(quizData.timeLimitMinutes * 60);
+          }
         } else {
           toast.error("Quiz not found.");
           navigate('/employee-dashboard');
@@ -75,6 +79,28 @@ const QuizTaker = () => {
 
     fetchQuiz();
   }, [quizId, navigate, employeeId]);
+
+  // Timer useEffect
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0 || quizCompleted || !quiz || !quiz.timeLimitMinutes) {
+      return; // No timer needed or timer expired or quiz done
+    }
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime !== null && prevTime <= 1) {
+          clearInterval(timerId);
+          toast.info("Time's up! Submitting your quiz automatically.");
+          handleSubmitQuiz(true); // Pass a flag to indicate auto-submission due to time up
+          return 0;
+        }
+        return prevTime !== null ? prevTime - 1 : null;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId); // Cleanup interval on component unmount or when dependencies change
+  }, [timeLeft, quizCompleted, quiz]);
+
 
   const handleAnswerSelect = (optionIndex: number) => {
     const newAnswers = [...userAnswers];
@@ -105,13 +131,13 @@ const QuizTaker = () => {
     return Math.round((correctCount / quiz.questions.length) * 100);
   };
 
-  const handleSubmitQuiz = async () => {
-    if (!quiz || !employeeId || isSubmitting) return;
+  const handleSubmitQuiz = async (autoSubmitted = false) => {
+  if (!quiz || !employeeId || isSubmitting) return;
 
     // Optional: Add validation to ensure all questions are answered
-    if (userAnswers.some(answer => answer === -1)) {
-       toast.warning("Please answer all questions before submitting.");
-       return;
+    if (!autoSubmitted && userAnswers.some(answer => answer === -1)) {
+      toast.warning("Please answer all questions before submitting.");
+      return;
     }
 
     setIsSubmitting(true);
@@ -173,6 +199,13 @@ const QuizTaker = () => {
   const currentQuestion = quiz.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
 
+  const formatTime = (seconds: number | null): string => {
+    if (seconds === null) return "";
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <Button onClick={() => navigate('/employee-dashboard')} variant="outline" className="mb-6">
@@ -184,9 +217,12 @@ const QuizTaker = () => {
           <CardTitle>{quiz.title}</CardTitle>
           {quiz.description && <CardDescription>{quiz.description}</CardDescription>}
           <div className="text-sm text-gray-600 mt-2">
-            Question {currentQuestionIndex + 1} of {quiz.questions.length}
-            {quiz.timeLimitMinutes && ` | Time Limit: ${quiz.timeLimitMinutes} minutes`}
-          </div>
+            Question {currentQuestionIndex + 1} of {quiz.questions.length} 
+            {quiz.timeLimitMinutes && !quizCompleted && (
+              <span className={`ml-2 font-semibold ${timeLeft !== null && timeLeft < 60 ? 'text-red-500' : ''}`}>
+                | Time Left: {formatTime(timeLeft)}
+              </span>
+            )}</div>
         </CardHeader>
         <CardContent className="space-y-6">
           {quizCompleted ? (
@@ -235,7 +271,7 @@ const QuizTaker = () => {
                   Previous
                 </Button>
                 {isLastQuestion ? (
-                  <Button onClick={handleSubmitQuiz} disabled={isSubmitting}>
+                  <Button onClick={() => handleSubmitQuiz()} disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Submit Quiz'}
                   </Button>
                 ) : (
