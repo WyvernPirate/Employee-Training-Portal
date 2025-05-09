@@ -48,6 +48,7 @@ export interface DashboardAssessment {
   attemptScore?: number;
   attemptDate?: Date;
   hasAttempted: boolean; // True if a result exists in employee_assessment_results
+  isRelatedTrainingComplete?: boolean; // True if the related training content is completed
 }
 
 interface EmployeeData {
@@ -234,6 +235,12 @@ const EmployeeDashboard = () => {
       // 6. Merge Quiz Definitions with Attempts
       console.log("fetchDashboardData: Merging quiz definitions with attempts...");
       const dashboardAssessments = quizDefinitions.map(quizDef => {
+        let relatedTrainingComplete = true; // Default to true if no related content
+        if (quizDef.relatedTrainingContentId) {
+          // The relatedTrainingContentId is stored as "content-THE_ACTUAL_ID"
+          const actualContentId = quizDef.relatedTrainingContentId.replace('content-', '');
+          relatedTrainingComplete = currentEmployeeData.completedVideoIds?.includes(actualContentId) || false;
+        }
         if (!quizDef) {
             console.warn("fetchDashboardData: Encountered undefined quizDef during merge. Skipping.");
             return null; 
@@ -251,6 +258,7 @@ const EmployeeDashboard = () => {
           attemptStatus: attempt?.status as 'Passed' | 'Failed' | undefined,
           attemptScore: attempt?.score as number | undefined,
           attemptDate: attempt?.submittedAt as Date | undefined,
+          isRelatedTrainingComplete: relatedTrainingComplete,
         };
         return assessment;
       }).filter(Boolean) as DashboardAssessment[]; 
