@@ -1,12 +1,11 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress"; // Assuming this is available from shadcn/ui
-import { Star, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'; // Removed Play, Pause as ReactPlayer handles controls
+import { Star, ArrowLeft, CheckCircle, Loader2, HelpCircle } from 'lucide-react'; // Added HelpCircle for quiz button
 import { toast } from "sonner";
-import { doc, getDoc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 import ReactPlayer from 'react-player/youtube'; // Or your preferred player
 
@@ -18,7 +17,7 @@ interface TrainingContentData {
   fileUrl: string;
   duration?: string;
   department?: string;
-
+  // views and completions are tracked in Firestore, but not strictly needed in this interface for display here
 }
 
 
@@ -31,20 +30,21 @@ const TrainingViewer = () => {
   const [isCompletedByCurrentUser, setIsCompletedByCurrentUser] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false); // For "Mark as Complete" button
 
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [associatedQuizId, setAssociatedQuizId] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false); // Controlled by ReactPlayer callbacks
   const [videoProgress, setVideoProgress] = useState(0);
   const [rating, setRating] = useState<number | null>(null);
   const employeeId = localStorage.getItem('employeeId');
 
   // Simplified activeTab logic for now, assuming content type dictates view
-  // const [activeTab, setActiveTab] = useState("video"); 
+  // const [activeTab, setActiveTab] = useState("video");
 
-  
+
   const handleBackToList = () => {
     navigate('/employee-dashboard');
   };
 
-  
+
   const handleRating = (stars: number) => {
     setRating(stars);
     toast.success(`Thank you for your ${stars}-star rating!`);
@@ -54,7 +54,7 @@ const TrainingViewer = () => {
    // handleVideoTimeUpdate and togglePlayPause are not needed if ReactPlayer handles controls and progress.
   // ReactPlayer's onProgress callback updates videoProgress directly.
 
-  
+
   useEffect(() => {
     if (!videoId) {
       toast.error("Training content ID is missing.");
@@ -79,6 +79,7 @@ const TrainingViewer = () => {
           // setActiveTab(contentData.contentType); // Set tab based on fetched content type
 
           // Log view - increment view count
+          // Consider adding logic here to only increment view once per user per content
           await updateDoc(contentRef, {
             views: increment(1)
           });
@@ -89,6 +90,18 @@ const TrainingViewer = () => {
           if (employeeSnap.exists()) {
             const completedIds = employeeSnap.data()?.completedVideoIds || [];
             setIsCompletedByCurrentUser(completedIds.includes(videoId));
+          }
+
+          // Fetch associated quiz
+          // The relatedTrainingContentId in assessments is stored as "content-THE_ACTUAL_ID"
+          const assessmentsRef = collection(db, "assessments");
+          const quizQuery = query(assessmentsRef, where("relatedTrainingContentId", "==", `content-${videoId}`));
+          const quizSnapshot = await getDocs(quizQuery);
+
+          if (!quizSnapshot.empty) {
+            setAssociatedQuizId(quizSnapshot.docs[0].id); // Store the ID of the first matching quiz
+          } else {
+            setAssociatedQuizId(null);
           }
 
         } else {
@@ -138,7 +151,7 @@ const TrainingViewer = () => {
   if (!content) {
     return <div className="min-h-screen flex items-center justify-center"><p>Content not found.</p></div>;
   }
-   
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,9 +159,9 @@ const TrainingViewer = () => {
       <header className="bg-[#000000] text-white p-4 sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Spare Parts Academy</h1>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleBackToList}
             className="text-white border-white hover:bg-[#ea384c] hover:border-transparent"
           >
@@ -187,11 +200,11 @@ const TrainingViewer = () => {
             {content.contentType === 'video' && (
               <div className="aspect-video bg-black rounded-md overflow-hidden relative">
                 {/* Using ReactPlayer for broader compatibility, assuming fileUrl is a direct video URL or YouTube link */}
-                <ReactPlayer 
-                  url={content.fileUrl} 
+                <ReactPlayer
+                  url={content.fileUrl}
                   playing={isPlaying}
-                  controls 
-                  width="100%" 
+                  controls
+                  width="100%"
                   height="100%"
                   onProgress={(state) => setVideoProgress(state.played * 100)}
                   onPlay={() => setIsPlaying(true)}
@@ -206,7 +219,7 @@ const TrainingViewer = () => {
 
             {content.contentType === 'pdf' && (
               <div className="aspect-[3/4] md:aspect-video bg-white border rounded-md overflow-hidden mb-4">
-                <iframe 
+                <iframe
                   src={content.fileUrl}
                   className="w-full h-[600px] md:h-full" // Ensure iframe has enough height
                   title={content.title}
@@ -227,8 +240,8 @@ const TrainingViewer = () => {
 
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               {!isCompletedByCurrentUser ? (
-                <Button 
-                  onClick={handleMarkAsComplete} 
+                <Button
+                  onClick={handleMarkAsComplete}
                   disabled={isUpdating}
                   size="lg"
                   className="w-full sm:w-auto bg-[#ea384c] hover:bg-[#d9293d]"
@@ -240,16 +253,29 @@ const TrainingViewer = () => {
                 <div className="w-full sm:w-auto text-center p-3 bg-green-100 text-green-700 rounded-md border border-green-300">
                   <CheckCircle className="inline-block mr-2 h-5 w-5" /> You have completed this training!
                 </div>
+                )}
+
+              {/* Display "Start Quiz" button if content is complete and a quiz is associated */}
+              {isCompletedByCurrentUser && associatedQuizId && (
+                <Button
+                  onClick={() => navigate(`/quiz/${associatedQuizId}`)}
+                  size="lg"
+                  variant="default" // Or another variant like "success" if you have one
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  Start Quiz for this Training
+                </Button>
               )}
                   <div className="flex items-center">
-                    Rate this document: 
+                    Rate this document:
                     <div className="ml-2 flex">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <Star 
+                        <Star
                           key={star}
                           className={`h-5 w-5 cursor-pointer ${
-                            rating && star <= rating 
-                              ? 'text-yellow-500 fill-yellow-500' 
+                            rating && star <= rating
+                              ? 'text-yellow-500 fill-yellow-500'
                               : 'text-gray-300'
                           }`}
                           onClick={() => handleRating(star)}
@@ -260,7 +286,7 @@ const TrainingViewer = () => {
                 </div>
           </CardContent>
         </Card>
-      </div>              
+      </div>
     </div>
   );
 };
