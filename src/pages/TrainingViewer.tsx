@@ -275,17 +275,36 @@ const TrainingViewer = () => {
                 </div>
             )}
 
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-              {!isCompletedByCurrentUser ? (
-                <Button
-                  onClick={handleMarkAsComplete}
-                  disabled={isUpdating}
-                  size="lg"
-                  className="w-full sm:w-auto bg-[#ea384c] hover:bg-[#d9293d]"
-                >
-                  {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                  Mark as Complete
-                </Button>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-start gap-4"> {/* Changed justify-between to justify-start */}
+               {!isCompletedByCurrentUser ? (
+               (() => {
+                  let buttonDisabled = isUpdating;
+                  let buttonClassName = "w-full sm:w-auto text-white";
+
+                  if (content.contentType === 'video') {
+                    if (videoProgress >= 99.5) { // Using 99.5 to catch near 100% due to potential float issues
+                      buttonClassName += " bg-green-500 hover:bg-green-600"; // Green and active
+                    } else {
+                      buttonClassName += " bg-red-400 cursor-not-allowed opacity-70"; // Dimmed red and disabled
+                      buttonDisabled = true; // Explicitly disable if progress not 100%
+                    }
+                  } else if (content.contentType === 'pdf') {
+                    // For PDF, always enabled (if not already completed), and stays red until clicked
+                    buttonClassName += " bg-[#ea384c] hover:bg-[#d9293d]";
+                  }
+
+                  return (
+                    <Button
+                      onClick={handleMarkAsComplete}
+                      disabled={buttonDisabled}
+                      size="lg"
+                      className={buttonClassName}
+                    >
+                      {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                      Mark as Complete
+                    </Button>
+                  );
+                })()
               ) : (
                 <div className="w-full sm:w-auto text-center p-3 bg-green-100 text-green-700 rounded-md border border-green-300">
                   <CheckCircle className="inline-block mr-2 h-5 w-5" /> You have completed this training!
@@ -304,8 +323,8 @@ const TrainingViewer = () => {
                   Start Quiz for this Training
                 </Button>
               )}
-                  <div className="flex items-center">
-                    Rate this document:
+                  <div className="flex items-center sm:ml-auto"> {/* Pushes rating to the right on larger screens */}
+                     Rate this document:
                     <div className="ml-2 flex">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
