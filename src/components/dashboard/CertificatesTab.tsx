@@ -2,8 +2,10 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Award } from 'lucide-react';
+import { Award, Eye } from 'lucide-react'; 
 import { Certificate } from '@/pages/EmployeeDashboard'; // Assuming Certificate is defined in EmployeeDashboard
+import { useNavigate } from 'react-router-dom';
+
 
 interface CertificatesTabProps {
   certificates: Certificate[];
@@ -11,6 +13,7 @@ interface CertificatesTabProps {
 }
 
 const CertificatesTab = ({ certificates, setActiveTab }: CertificatesTabProps) => {
+  const navigate = useNavigate();
   return (
     <>
       {certificates.length > 0 ? (
@@ -39,9 +42,9 @@ const CertificatesTab = ({ certificates, setActiveTab }: CertificatesTabProps) =
                 </div>
               </CardContent>
               <CardFooter className="flex justify-center">
-                <Button>
-                  Download Certificate
-                </Button>
+                <Button onClick={() => navigate(`/certificate/${certificate.id}`)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View/Download</Button>
               </CardFooter>
             </Card>
           ))}
