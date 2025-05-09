@@ -11,6 +11,7 @@ import TrainingViewer from './pages/TrainingViewer';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import EmployeeRegister from './pages/EmployeeRegister';
+import QuizTaker from './pages/QuizTaker';
  
 // Helper to get current auth status
 const useAuth = () => {
@@ -80,7 +81,15 @@ const App = () => {
             </ProtectedRoute>
           } 
         />
-
+        {/* Protected Quiz Taker Route */}
+         <Route
+          path="/quiz/:quizId" // This is the important part
+          element={
+            <ProtectedRoute allowedRole="employee">
+              <QuizTaker />
+            </ProtectedRoute>
+          }
+          />
         {/* Not Found Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
