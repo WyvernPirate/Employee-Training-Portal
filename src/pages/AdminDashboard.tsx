@@ -100,6 +100,7 @@ const AdminDashboard = () => {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDraggingContent, setIsDraggingContent] = useState(false);
 
   // Form states for Create Quiz
   const [quizTitle, setQuizTitle] = useState("");
@@ -399,6 +400,35 @@ useEffect(() => {
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+    }
+  };
+
+  // Drag and Drop Handlers for Content File
+  const handleContentDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingContent(true);
+  };
+
+  const handleContentDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingContent(false);
+  };
+
+  const handleContentDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingContent(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFile = e.dataTransfer.files[0];
+      // Basic type check (can be more robust)
+      if (droppedFile.type.startsWith("video/") || droppedFile.type === "application/pdf") {
+        setContentFile(droppedFile);
+      } else {
+        toast.error("Invalid file type. Please upload a video or PDF.");
+      }
+      e.dataTransfer.clearData();
     }
   };
 
@@ -729,23 +759,40 @@ useEffect(() => {
 
                   {/* Video Upload Section */}
                   <div className="space-y-2">
-                  <Label htmlFor="content-file-input">Content File</Label>
-                    <div className="border-2 border-dashed rounded-md p-6 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2">
+                  <Label htmlFor="content-file-input">Content File (Video or PDF)</Label>
+                    <div 
+                      className={`border-2 border-dashed rounded-md p-6 text-center transition-colors ${isDraggingContent ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+                      onDragOver={handleContentDragOver}
+                      onDragLeave={handleContentDragLeave}
+                      onDrop={handleContentDrop}
+                    > 
+                    <div className="flex flex-col items-center justify-center gap-2">
                         <div className="flex">
                           <Video className="h-10 w-10 text-gray-400" />
                           <FileText className="h-10 w-10 text-gray-400 ml-2" />
                         </div>
                         <p className="text-sm text-gray-500">
                           Click to upload or drag and drop video files or PDF documents
+                          {isDraggingContent && <span className="text-blue-600 font-semibold"> Release to drop!</span>}
                         </p>
                         <p className="text-xs text-gray-500">
-                          Video: MP4, MOV or AVI (max 500MB)<br />
-                          PDF: PDF files (max 50MB)
+                           Accepted: MP4, MOV, AVI<br />
+                           Video: Video files (max 500MB)<br />
+                            PDF: PDF files (max 50MB)
                         </p>
                       </div>
-                      <Input id="content-file-input" type="file" accept=".mp4,.mov,.avi,.pdf" onChange={(e) => setContentFile(e.target.files ? e.target.files[0] : null)} className="mt-2" />
-                      {contentFile && <p className="text-sm text-gray-700 mt-1">Selected: {contentFile.name}</p>}
+                     <Input 
+                        id="content-file-input" 
+                        type="file" 
+                        accept=".mp4,.mov,.avi,.mkv,.webm,.pdf" // Expanded video types slightly
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setContentFile(e.target.files[0]);
+                          }
+                        }} 
+                        className="sr-only" // Hide the default input, rely on drop zone or label click
+                      />
+                      {contentFile && <p className="text-sm text-green-600 mt-2">Selected: {contentFile.name}</p>}
                     </div>
                   </div>
 
