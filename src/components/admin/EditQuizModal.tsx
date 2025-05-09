@@ -51,6 +51,8 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
   const [questions, setQuestions] = useState<QuizQuestionEdit[]>([]);
   const [passingScore, setPassingScore] = useState(70);
   const [timeLimit, setTimeLimit] = useState<number | null>(30);
+  const [grantsCertificate, setGrantsCertificate] = useState(false);
+  const [certificateTitle, setCertificateTitle] = useState("");
 
   useEffect(() => {
     if (quizToEdit) {
@@ -61,6 +63,8 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
       setQuestions(quizToEdit.questions.map((q, index) => ({ ...q, id: `q-${index}-${Date.now()}` })) || []);
       setPassingScore(quizToEdit.passingScore || 70);
       setTimeLimit(quizToEdit.timeLimitMinutes ?? 30);
+      setGrantsCertificate(quizToEdit.grantsCertificate || false);
+      setCertificateTitle(quizToEdit.certificateTitle || "");
     }
   }, [quizToEdit, isOpen, departmentOptions]);
 
@@ -107,6 +111,8 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
       questions: questions.map(({ id, ...rest }) => rest), // Remove temporary client-side id
       passingScore,
       timeLimitMinutes: timeLimit,
+      grantsCertificate,
+      certificateTitle: grantsCertificate ? certificateTitle : " ",
     };
 
     try {
@@ -189,7 +195,25 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
               <Input id="edit-quiz-time-limit" type="number" min="0" value={timeLimit ?? ""} onChange={(e) => setTimeLimit(e.target.value === "" ? null : parseInt(e.target.value))} />
             </div>
           </div>
-
+          <div className="space-y-2 border-t pt-4 mt-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-quiz-grants-certificate"
+                checked={grantsCertificate}
+                onChange={(e) => setGrantsCertificate(e.target.checked)}
+                className="form-checkbox h-5 w-5 text-[#ea384c] rounded focus:ring-[#ea384c]"
+              />
+              <Label htmlFor="edit-quiz-grants-certificate">Grants a Certificate upon Passing?</Label>
+            </div>
+            {grantsCertificate && (
+              <div className="space-y-2 pl-7">
+                <Label htmlFor="edit-quiz-certificate-title">Certificate Title</Label>
+                <Input id="edit-quiz-certificate-title" value={certificateTitle} onChange={(e) => setCertificateTitle(e.target.value)} placeholder="e.g., Certified Brake Systems Technician" required={grantsCertificate} />
+              </div>
+            )}
+          </div>
+            
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>{isSaving ? "Saving..." : "Save Changes"}</Button>
