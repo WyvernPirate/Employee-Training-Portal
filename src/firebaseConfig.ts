@@ -1,12 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-// import { getAnalytics } from "firebase/analytics"; // Optional: if you want analytics
+import { getStorage } from "firebase/storage"; // Import storage if needed
 
-// Your web app's Firebase configuration
-// IMPORTANT: Use environment variables for sensitive keys in production!
-// Create a .env file in your project root (c:\VS\webdev\Employee-Training-Portal\.env)
-// Add your keys like: VITE_FIREBASE_API_KEY=YOUR_ACTUAL_KEY
+
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -23,6 +21,6 @@ const app = initializeApp(firebaseConfig);
 // Initialize services
 const db = getFirestore(app); // Firestore database instance
 const auth = getAuth(app); // Authentication instance
-// const analytics = getAnalytics(app); // Optional
+const storage = getStorage(app); // Storage instance (if needed)
 
-export { db, auth, app }; // Export the instances you need
+export { db, auth, app, storage }; // Export the instances you need

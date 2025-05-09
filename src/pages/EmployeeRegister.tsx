@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const EmployeeRegister = () => {
   const navigate = useNavigate();
-  const [fullName, setFullName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,6 +25,7 @@ const EmployeeRegister = () => {
     "IT",
     "Customer Support",
     "Human Resources",
+    "Logistics",
     "Finance",
   ]
 
@@ -68,7 +70,8 @@ const EmployeeRegister = () => {
 
       // Add new employee to Firestore
       await addDoc(employeesCollectionRef, {
-        fullName,
+        firstName,
+        surname,
         email,
         hashedPassword,
         department,
@@ -111,8 +114,12 @@ const EmployeeRegister = () => {
           <div className="p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <Input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <Input id="fullName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" required />
+              </div>
+              <div>
+                <label htmlFor="surname" className="block text-sm font-medium text-gray-700 mb-1">Surname</label>
+                <Input id="surname" type="text" value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Doe" required />
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>

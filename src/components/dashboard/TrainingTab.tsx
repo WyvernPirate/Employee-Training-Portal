@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Play, FileVideo, Star } from 'lucide-react';
+import { TrainingVideo } from '@/pages/EmployeeDashboard';
 
 interface TrainingTabProps {
-  trainingVideos: any[];
-  handleStartTraining: (videoId: number) => void;
+  trainingVideos: TrainingVideo[];
+  handleStartTraining: (videoId: string) => void;
 }
 
 const TrainingTab = ({ trainingVideos, handleStartTraining }: TrainingTabProps) => {
@@ -17,7 +18,7 @@ const TrainingTab = ({ trainingVideos, handleStartTraining }: TrainingTabProps) 
         <Card key={video.id} className="overflow-hidden flex flex-col">
           <div className="relative">
             <img 
-              src={video.thumbnail} 
+              src={video.thumbnailUrl} 
               alt={video.title} 
               className="w-full h-[150px] object-cover"
             />
