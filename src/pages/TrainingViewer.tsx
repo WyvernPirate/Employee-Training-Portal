@@ -258,7 +258,6 @@ const TrainingViewer = () => {
                     </div>
                   </div>
                 </div>
-              
           </CardContent>
         </Card>
       </div>              
