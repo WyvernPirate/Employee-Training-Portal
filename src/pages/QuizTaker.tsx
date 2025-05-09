@@ -19,6 +19,8 @@ interface QuizDefinition {
   passingScore: number;
   timeLimitMinutes?: number;
   relatedTrainingContentId?: string;
+  grantsCertificate?: boolean;
+  certificateTitle?: string;
 }
 
 const QuizTaker = () => {
@@ -133,6 +135,24 @@ const QuizTaker = () => {
 
       setQuizCompleted(true);
       toast.success(`Quiz submitted!`);
+
+      // Issue certificate if applicable
+      if (passed && quiz.grantsCertificate && quiz.certificateTitle) {
+        try {
+          await addDoc(collection(db, "certificates"), {
+            employeeId: employeeId,
+            quizId: quiz.id, // Link to the quiz that granted it
+            title: quiz.certificateTitle,
+            issuedDate: serverTimestamp(),
+            issuingBody: "Spare Parts Classroom", // You can make this configurable later
+            relatedTrainingContentId: quiz.relatedTrainingContentId || null, // Store if available
+          });
+          toast.info(`Congratulations! You've earned the "${quiz.certificateTitle}" certificate!`);
+        } catch (certError) {
+          console.error("Error issuing certificate:", certError);
+          toast.error("Quiz passed, but there was an issue issuing your certificate. Please contact admin.");
+        }
+      }
 
     } catch (error) {
       console.error("Error submitting quiz:", error);

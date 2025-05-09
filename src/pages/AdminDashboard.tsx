@@ -64,6 +64,8 @@ export interface Assessment {
   timeLimitMinutes?: number;
   department?: string | string[];
   createdAt: any; // Firestore Timestamp
+  grantsCertificate?: boolean; // Whether passing the quiz grants a certificate
+  certificateTitle?: string; // Title of the certificate
 
 }
 
@@ -113,6 +115,8 @@ const AdminDashboard = () => {
   ]);
   const [quizPassingScore, setQuizPassingScore] = useState(70);
   const [quizTimeLimit, setQuizTimeLimit] = useState<number | null>(30); // in minutes
+  const [quizGrantsCertificate, setQuizGrantsCertificate] = useState(false);
+  const [quizCertificateTitle, setQuizCertificateTitle] = useState("");
 
   // Filtering states
   const [searchQuery, setSearchQuery] = useState("");
@@ -515,6 +519,8 @@ useEffect(() => {
         passingScore: quizPassingScore,
         timeLimitMinutes: quizTimeLimit,
         createdAt: serverTimestamp(),
+        grantsCertificate: quizGrantsCertificate,
+        certificateTitle: quizGrantsCertificate ? quizCertificateTitle : "",
       };
 
       await addDoc(collection(db, "assessments"), newQuizData);
@@ -528,6 +534,8 @@ useEffect(() => {
       setQuizQuestions([{ id: Date.now().toString(), questionText: "", options: ["", "", "", ""], correctAnswerIndex: 0 }]);
       setQuizPassingScore(70);
       setQuizTimeLimit(30);
+      setQuizGrantsCertificate(false);
+      setQuizCertificateTitle("");
       fetchAdminData(); // Refresh assessments list (if you display it)
 
     } catch (error) {
@@ -975,6 +983,24 @@ useEffect(() => {
                       <Label htmlFor="time-limit">Time Limit (minutes)</Label>
                       <Input id="time-limit" type="number" min="1" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(parseInt(e.target.value))} required />
                     </div>
+                  </div>
+                  <div className="space-y-2 border-t pt-4 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="quiz-grants-certificate"
+                        checked={quizGrantsCertificate}
+                        onChange={(e) => setQuizGrantsCertificate(e.target.checked)}
+                        className="form-checkbox h-5 w-5 text-[#ea384c] rounded focus:ring-[#ea384c]"
+                      />
+                      <Label htmlFor="quiz-grants-certificate">Grants a Certificate upon Passing?</Label>
+                    </div>
+                    {quizGrantsCertificate && (
+                      <div className="space-y-2 pl-7">
+                        <Label htmlFor="quiz-certificate-title">Certificate Title</Label>
+                        <Input id="quiz-certificate-title" value={quizCertificateTitle} onChange={(e) => setQuizCertificateTitle(e.target.value)} placeholder="e.g., Certified Brake Systems Technician" required={quizGrantsCertificate} />
+                      </div>
+                    )}
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isUploading}>
