@@ -7,7 +7,7 @@ import { Star, ArrowLeft, CheckCircle, Loader2, HelpCircle } from 'lucide-react'
 import { toast } from "sonner";
 import { doc, getDoc, updateDoc, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
-import ReactPlayer from 'react-player/youtube'; // Or your preferred player
+import ReactPlayer from 'react-player'; // Or your preferred player
 
 interface TrainingContentData {
   id: string;
@@ -56,6 +56,9 @@ const TrainingViewer = () => {
 
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("TrainingViewer useEffect: videoId from params:", videoId, "employeeId from localStorage:", employeeId);
+    }
     if (!videoId) {
       toast.error("Training content ID is missing.");
       navigate(-1);
@@ -71,13 +74,18 @@ const TrainingViewer = () => {
       setIsLoading(true);
       try {
         const contentRef = doc(db, "training_content", videoId);
+        if (process.env.NODE_ENV === 'development') {
+          console.log("TrainingViewer fetchContentAndLogView: Fetching content for ID:", videoId);
+        }
         const contentSnap = await getDoc(contentRef);
 
         if (contentSnap.exists()) {
           const contentData = { id: contentSnap.id, ...contentSnap.data() } as TrainingContentData;
           setContent(contentData);
-          // setActiveTab(contentData.contentType); // Set tab based on fetched content type
-
+          if (process.env.NODE_ENV === 'development') {
+            console.log("TrainingViewer fetchContentAndLogView: Content data fetched:", contentData);
+          }
+          
           // Log view - increment view count
           // Consider adding logic here to only increment view once per user per content
           await updateDoc(contentRef, {
@@ -87,13 +95,22 @@ const TrainingViewer = () => {
           // Check if this user has completed this content
           const employeeRef = doc(db, "employees", employeeId);
           const employeeSnap = await getDoc(employeeRef);
+          if (process.env.NODE_ENV === 'development') {
+            console.log("TrainingViewer fetchContentAndLogView: Fetched employee doc for completion check. Exists:", employeeSnap.exists());
+          }
           if (employeeSnap.exists()) {
             const completedIds = employeeSnap.data()?.completedVideoIds || [];
             setIsCompletedByCurrentUser(completedIds.includes(videoId));
+            if (process.env.NODE_ENV === 'development') {
+              console.log("TrainingViewer fetchContentAndLogView: Is content completed by current user?", completedIds.includes(videoId));
+            }
           }
 
           // Fetch associated quiz
           // The relatedTrainingContentId in assessments is stored as "content-THE_ACTUAL_ID"
+          if (process.env.NODE_ENV === 'development') {
+            console.log("TrainingViewer fetchContentAndLogView: Fetching associated quiz for contentId:", `content-${videoId}`);
+          }
           const assessmentsRef = collection(db, "assessments");
           const quizQuery = query(assessmentsRef, where("relatedTrainingContentId", "==", `content-${videoId}`));
           const quizSnapshot = await getDocs(quizQuery);
@@ -152,13 +169,19 @@ const TrainingViewer = () => {
     return <div className="min-h-screen flex items-center justify-center"><p>Content not found.</p></div>;
   }
 
+  // Log the fileUrl for video content to help debug
+  if (content.contentType === 'video') {
+  if (process.env.NODE_ENV === 'development') {
+    console.log("TrainingViewer (render): Preparing to render ReactPlayer. fileUrl:", content.fileUrl, "Full content object:", content);
+  }
+ }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-[#000000] text-white p-4 sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Spare Parts Academy</h1>
+          <h1 className="text-2xl font-bold">Spare Parts Classroom</h1>
           <Button
             variant="outline"
             size="sm"
@@ -201,17 +224,31 @@ const TrainingViewer = () => {
               <div className="aspect-video bg-black rounded-md overflow-hidden relative">
                 {/* Using ReactPlayer for broader compatibility, assuming fileUrl is a direct video URL or YouTube link */}
                 <ReactPlayer
+                  key={content.fileUrl} // Add key to force re-mount if URL changes
                   url={content.fileUrl}
                   playing={isPlaying}
                   controls
                   width="100%"
                   height="100%"
                   onProgress={(state) => setVideoProgress(state.played * 100)}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
+                  onReady={() => console.log("ReactPlayer: onReady triggered for URL:", content.fileUrl)}
+                  onStart={() => console.log("ReactPlayer: onStart triggered for URL:", content.fileUrl)}
+                  config={{
+                    file: {
+                      forceVideo: true, // Try forcing it to be treated as a video
+                      attributes: { crossOrigin: 'anonymous' }
+                    }
+                  }}
+                  onPlay={() => { console.log("ReactPlayer: onPlay"); setIsPlaying(true); }}
+                  onPause={() => { console.log("ReactPlayer: onPause"); setIsPlaying(false); }}
                   onEnded={() => {
                     setIsPlaying(false);
                     // Optionally auto-mark as complete or prompt user
+                    }}
+                  onError={(e) => {
+                    console.error("ReactPlayer Error:", e); 
+                    toast.error("Video could not be loaded. Please check the console for details.");
+ 
                   }}
                 />
               </div>
