@@ -97,8 +97,6 @@ const OverviewTab = ({
           </CardFooter>
         </Card>
       )}
-       {/* You can add more summary cards or quick links here */}
-      {/* The "Recent Activities" card from your original file can be re-added here if you have data for it */}
       </div>
     </div>
   );
