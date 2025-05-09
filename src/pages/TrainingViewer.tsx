@@ -181,7 +181,7 @@ const TrainingViewer = () => {
       {/* Header */}
       <header className="bg-[#000000] text-white p-4 sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Spare Parts Academy</h1>
+          <h1 className="text-2xl font-bold">Spare Parts Classroom</h1>
           <Button
             variant="outline"
             size="sm"
