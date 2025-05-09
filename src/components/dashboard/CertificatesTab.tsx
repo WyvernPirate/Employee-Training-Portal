@@ -19,8 +19,8 @@ const CertificatesTab = ({ certificates, setActiveTab }: CertificatesTabProps) =
             <Card key={certificate.id}>
               <CardHeader className="text-center border-b pb-6">
                 <Award className="h-16 w-16 text-[#ea384c] mx-auto mb-2" />
-                <CardTitle>{certificate.title}</CardTitle>
-                <CardDescription>Related Training ID: {certificate.relatedTrainingId || "N/A"}</CardDescription> 
+               <CardTitle>{certificate.title}</CardTitle>                
+                <CardDescription>Related Training ID: {certificate.relatedTrainingContentId || "N/A"}</CardDescription>
                 {/* Or, if you add a 'courseName' field to your Certificate interface based on relatedTrainingId: 
                 <CardDescription>Issued for completion of {certificate.courseName || "General Training"}</CardDescription> */}
               </CardHeader>

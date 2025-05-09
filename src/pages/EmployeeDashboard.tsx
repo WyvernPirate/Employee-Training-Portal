@@ -16,9 +16,10 @@ export interface TrainingVideo {
   id: string; // Firestore document ID
   title: string;
   description: string;
-  duration: string;
+  duration?: string;
   thumbnailUrl: string;
-  videoUrl?: string; // e.g., YouTube ID or direct URL
+  fileUrl: string; // This is the actual content URL (video or PDF)
+  contentType: 'video' | 'pdf';
   department?: string | string[]; // For filtering
   order?: number; // For sequencing
   completed?: boolean; // This will be derived based on employee's progress
@@ -31,20 +32,22 @@ export interface Certificate {
   expiryDate?: any; // Firestore Timestamp (optional)
   issuingBody: string;
   certificateUrl?: string; // URL to the certificate file
-  relatedTrainingId?: string; // ID of a video in training_videos
+  relatedTrainingContentId?: string; // ID of content in training_content
 }
 
-export interface Assessment {
+export interface DashboardAssessment {
   id: string; // Firestore document ID
   title: string;
   description?: string;
-  status: 'Pending' | 'Completed' | 'Passed' | 'Failed';
-  score?: number;
-  dueDate?: any; // Firestore Timestamp (optional)
-  relatedTrainingId?: string; // ID of a video in training_videos
-  assessmentUrl?: string; 
-  questions?: Map<string, { score: number; options: string[] }>; // Map of question IDs with score and options
-  timeLimit?: number; // e.g., "30 minutes"
+  relatedTrainingContentId?: string;
+  timeLimitMinutes?: number;
+  passingScore: number;
+  questionsCount: number;
+  // Employee-specific attempt data
+  attemptStatus?: 'Passed' | 'Failed'; // Derived from employee_assessment_results
+  attemptScore?: number;
+  attemptDate?: Date;
+  hasAttempted: boolean; // True if a result exists in employee_assessment_results
 }
 
 interface EmployeeData {
@@ -61,8 +64,7 @@ const EmployeeDashboard = () => {
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [trainingVideos, setTrainingVideos] = useState<TrainingVideo[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
-  
+  const [assessments, setAssessments] = useState<DashboardAssessment[]>([]);
 
   const employeeId = localStorage.getItem('employeeId');
   const cachedFullName = localStorage.getItem('employeeFullName');
@@ -70,126 +72,210 @@ const EmployeeDashboard = () => {
 
   useEffect(() => {
     if (!employeeId) {
-       // If employeeId is missing, but ProtectedRoute allowed access,
-      // it means isAuthenticated is true, but essential data is missing.
-      // This is an inconsistent state. Force a full logout.
       toast.error("User session data incomplete. Logging out for safety.");
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userType');
       localStorage.removeItem('employeeId');
       localStorage.removeItem('employeeFullName');
       localStorage.removeItem('employeeDepartment');
-      // employeeEmail is also set by login, but not critical for auth state here
       navigate('/login', { replace: true });
-     return;
+      return;
     }
+    console.log("EmployeeDashboard: useEffect triggered, calling fetchDashboardData for employeeId:", employeeId);
     fetchDashboardData(employeeId);
   }, [employeeId, navigate]);
 
   const fetchDashboardData = async (currentEmployeeId: string) => {
+    console.log("fetchDashboardData: Starting for employeeId:", currentEmployeeId);
     setIsLoading(true);
     try {
-      // 1. Fetch Employee Details (including completedVideoIds)
+      // 1. Fetch Employee Details
+      console.log("fetchDashboardData: Fetching employee details...");
       const empDocRef = doc(db, "employees", currentEmployeeId);
       const empDocSnap = await getDoc(empDocRef);
       let currentEmployeeData: EmployeeData;
 
       if (empDocSnap.exists()) {
         const data = empDocSnap.data();
+        console.log("fetchDashboardData: Employee doc exists, data:", data);
         currentEmployeeData = {
-            fullName: data.fullName || cachedFullName || "Employee",
+            fullName: (data.firstName && data.surname) 
+                        ? `${data.firstName} ${data.surname}` 
+                        : data.fullName || cachedFullName || "Employee",
             department: data.department || cachedDepartment || "",
             completedVideoIds: data.completedVideoIds || [],
         };
         setEmployeeData(currentEmployeeData);
-         // Update localStorage if fetched data is more accurate
-        if (data.fullName) localStorage.setItem('employeeFullName', data.fullName);
+        if (currentEmployeeData.fullName && currentEmployeeData.fullName !== "Employee") {
+            localStorage.setItem('employeeFullName', currentEmployeeData.fullName);
+        }
         if (data.department) localStorage.setItem('employeeDepartment', data.department);
       } else {
+        console.warn("fetchDashboardData: Employee doc does not exist for ID:", currentEmployeeId);
         toast.error("Employee data not found. Displaying cached info if available.");
-        currentEmployeeData = { // Fallback
+        currentEmployeeData = {
             fullName: cachedFullName || "Employee",
             department: cachedDepartment || "",
             completedVideoIds: [],
         };
         setEmployeeData(currentEmployeeData);
       }
+      console.log("fetchDashboardData: Employee details processed. currentEmployeeData:", currentEmployeeData);
 
-      // 2. Fetch Training Videos
-      // Consider filtering by currentEmployeeData.department or fetching "General" videos too
-      const videosCollectionRef = collection(db, "training_videos");
-      // Example: Fetch all videos ordered by 'order' field, then mark completed status
-      const videosQuery = query(videosCollectionRef, orderBy("order", "asc")); // Assuming you have an 'order' field
-      
-      const videosSnapshot = await getDocs(videosQuery);
-      const fetchedVideos = videosSnapshot.docs.map(docSnap => {
-        const videoData = docSnap.data();
-        return {
+      // 2. Fetch Training Content
+      console.log("fetchDashboardData: Fetching training content...");
+      let contentQuery;
+      if (currentEmployeeData.department && currentEmployeeData.department !== "All") {
+        console.log("fetchDashboardData: Querying training_content for department:", currentEmployeeData.department, "and 'All'");
+        contentQuery = query(
+          collection(db, "training_content"),
+          where("department", "in", [currentEmployeeData.department, "All"]),
+          orderBy("createdAt", "desc")
+        );
+      } else {
+        console.log("fetchDashboardData: Querying all training_content");
+        contentQuery = query(collection(db, "training_content"), orderBy("createdAt", "desc"));
+      }
+
+      const contentSnapshot = await getDocs(contentQuery);
+      console.log("fetchDashboardData: Training content snapshot size:", contentSnapshot.size);
+      const fetchedContent = contentSnapshot.docs.map(docSnap => {
+        const contentData = docSnap.data() as Record<string, any>; 
+        const trainingVideo: TrainingVideo = {
           id: docSnap.id,
-          title: videoData.title || "Untitled Video",
-          description: videoData.description || "",
-          duration: videoData.duration || "N/A",
-          thumbnailUrl: videoData.thumbnailUrl || "https://placeholder.pics/svg/300x200/DEDEDE/555555/Video",
-          videoUrl: videoData.videoUrl,
-          department: videoData.department,
-          order: videoData.order,
+          title: (contentData.title as string) || "Untitled Content",
+          description: (contentData.description as string) || "",
+          duration: contentData.duration as string | undefined,
+          thumbnailUrl: (contentData.thumbnailUrl as string) || "https://placeholder.pics/svg/300x225.png/DEDEDE/555555/Content",
+          fileUrl: (contentData.fileUrl as string) || "", 
+          contentType: contentData.contentType as 'video' | 'pdf', 
+          department: contentData.department as string | string[] | undefined,
+          order: contentData.order as number | undefined,
           completed: currentEmployeeData.completedVideoIds?.includes(docSnap.id) || false,
-        } as TrainingVideo;
+        };
+        return trainingVideo; 
       });
-      setTrainingVideos(fetchedVideos);
+      setTrainingVideos(fetchedContent);
+      console.log("fetchDashboardData: Training content fetched and mapped. Count:", fetchedContent.length);
 
       // 3. Fetch Certificates for the employee
-      const certsQuery = query(collection(db, "certificates"), where("employeeId", "==", currentEmployeeId));
+      console.log("fetchDashboardData: Fetching certificates...");
+      const certsQuery = query(collection(db, "certificates"), where("employeeId", "==", currentEmployeeId), orderBy("issuedDate", "desc"));
       const certsSnapshot = await getDocs(certsQuery);
+      console.log("fetchDashboardData: Certificates snapshot size:", certsSnapshot.size);
       const fetchedCerts = certsSnapshot.docs.map(docSnap => {
-        const certData = docSnap.data();
-        return { 
-          id: docSnap.id, 
-          ...certData,
-          // Convert Firestore Timestamps to JS Dates if needed for display components
-          issuedDate: certData.issuedDate?.toDate ? certData.issuedDate.toDate() : new Date(certData.issuedDate),
-          expiryDate: certData.expiryDate?.toDate ? certData.expiryDate.toDate() : (certData.expiryDate ? new Date(certData.expiryDate) : undefined),
-        } as Certificate;
+        const certData = docSnap.data() as Record<string, any>; 
+        const certificate: Certificate = {
+          id: docSnap.id,
+          title: (certData.title as string) || "Untitled Certificate",
+          issuedDate: certData.issuedDate?.toDate ? certData.issuedDate.toDate() : (certData.issuedDate ? new Date(certData.issuedDate) : new Date()),
+          expiryDate: certData.expiryDate?.toDate ? certData.expiryDate.toDate() : (certData.expiryDate ? new Date(certData.expiryDate) : null),
+          issuingBody: (certData.issuingBody as string) || "N/A",
+          certificateUrl: certData.certificateUrl as string | undefined,
+          relatedTrainingContentId: certData.relatedTrainingContentId as string | undefined,
+        };
+        return certificate;
       });
       setCertificates(fetchedCerts);
+      console.log("fetchDashboardData: Certificates fetched and mapped. Count:", fetchedCerts.length);
 
-      // 4. Fetch Assessments for the employee
-      const assessQuery = query(collection(db, "assessments"), where("employeeId", "==", currentEmployeeId));
-      const assessSnapshot = await getDocs(assessQuery);
-      const fetchedAssessments = assessSnapshot.docs.map(docSnap => {
-        const assessData = docSnap.data();
-        return { 
-          id: docSnap.id, 
-          title: assessData.title || "Untitled Assessment",
-          description: assessData.description,
-          status: assessData.status || "Pending",
-          score: assessData.score,
-          dueDate: assessData.dueDate?.toDate ? assessData.dueDate.toDate() : (assessData.dueDate ? new Date(assessData.dueDate) : undefined),
-          relatedTrainingId: assessData.relatedTrainingId,
-          assessmentUrl: assessData.assessmentUrl,
-          questions: assessData.questions, // Expecting 'questions' array on the Firestore doc
-          timeLimitMinutes: assessData.timeLimitMinutes,
-        } as Assessment;
+      // 4. Fetch Quiz Definitions (Assessments)
+      console.log("fetchDashboardData: Fetching quiz definitions (assessments)...");
+      let quizDefQuery;
+      if (currentEmployeeData.department && currentEmployeeData.department !== "All") {
+        console.log("fetchDashboardData: Querying assessments for department:", currentEmployeeData.department, "and 'All'");
+        quizDefQuery = query(
+          collection(db, "assessments"),
+          where("department", "in", [currentEmployeeData.department, "All"]),
+          orderBy("createdAt", "desc")
+        );
+      } else {
+        console.log("fetchDashboardData: Querying all assessments");
+        quizDefQuery = query(collection(db, "assessments"), orderBy("createdAt", "desc"));
+      }
+      const quizDefSnapshot = await getDocs(quizDefQuery);
+      console.log("fetchDashboardData: Quiz definitions snapshot size:", quizDefSnapshot.size);
+      const quizDefinitions = quizDefSnapshot.docs.map(doc => {
+        const data = doc.data() as Record<string, any>; 
+        const quizDefPart = {
+          id: doc.id,
+          title: (data.title as string) || "Untitled Quiz",
+          description: (data.description as string) || "",
+          relatedTrainingContentId: data.relatedTrainingContentId as string | undefined,
+          timeLimitMinutes: data.timeLimitMinutes as number | undefined,
+          passingScore: (data.passingScore as number) || 70, 
+          questions: data.questions as Array<{ questionText: string; options: string[]; correctAnswerIndex: number }> | undefined,
+        };
+        return quizDefPart; 
       });
-      setAssessments(fetchedAssessments);
+      console.log("fetchDashboardData: Quiz definitions fetched and mapped. Count:", quizDefinitions.length);
+
+      // 5. Fetch Employee's Quiz Attempts
+      console.log("fetchDashboardData: Fetching employee quiz attempts...");
+      const attemptsQuery = query(collection(db, "employee_assessment_results"), where("employeeId", "==", currentEmployeeId));
+      const attemptsSnapshot = await getDocs(attemptsQuery);
+      console.log("fetchDashboardData: Employee quiz attempts snapshot size:", attemptsSnapshot.size);
+      const employeeAttemptsMap = new Map<string, any>();
+      attemptsSnapshot.forEach(docSnap => { 
+        const attempt = docSnap.data() as Record<string, any>; // Added cast
+        const attemptQuizId = attempt.quizId as string;
+        if (attemptQuizId) { 
+            const existingAttempt = employeeAttemptsMap.get(attemptQuizId);
+            const currentAttemptSubmittedAt = attempt.submittedAt?.toDate ? attempt.submittedAt.toDate() : (attempt.submittedAt ? new Date(attempt.submittedAt) : null);
+            const existingAttemptSubmittedAt = existingAttempt?.submittedAt; 
+
+            if (!existingAttempt || (currentAttemptSubmittedAt && existingAttemptSubmittedAt && currentAttemptSubmittedAt > existingAttemptSubmittedAt)) {
+                employeeAttemptsMap.set(attemptQuizId, { ...attempt, id: docSnap.id, submittedAt: currentAttemptSubmittedAt });
+            }
+        }
+      });
+      console.log("fetchDashboardData: Employee quiz attempts processed into map. Map size:", employeeAttemptsMap.size);
+
+      // 6. Merge Quiz Definitions with Attempts
+      console.log("fetchDashboardData: Merging quiz definitions with attempts...");
+      const dashboardAssessments = quizDefinitions.map(quizDef => {
+        if (!quizDef) {
+            console.warn("fetchDashboardData: Encountered undefined quizDef during merge. Skipping.");
+            return null; 
+        }
+        const attempt = employeeAttemptsMap.get(quizDef.id);
+        const assessment: DashboardAssessment = {
+          id: quizDef.id,
+          title: quizDef.title,
+          description: quizDef.description,
+          relatedTrainingContentId: quizDef.relatedTrainingContentId,
+          timeLimitMinutes: quizDef.timeLimitMinutes,
+          passingScore: quizDef.passingScore,
+          questionsCount: Array.isArray(quizDef.questions) ? quizDef.questions.length : 0,
+          hasAttempted: !!attempt,
+          attemptStatus: attempt?.status as 'Passed' | 'Failed' | undefined,
+          attemptScore: attempt?.score as number | undefined,
+          attemptDate: attempt?.submittedAt as Date | undefined,
+        };
+        return assessment;
+      }).filter(Boolean) as DashboardAssessment[]; 
+      setAssessments(dashboardAssessments);
+      console.log("fetchDashboardData: Dashboard assessments merged. Count:", dashboardAssessments.length);
+      console.log("fetchDashboardData: Successfully completed all fetches and processing.");
 
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      // THIS IS THE CRITICAL LOG. CHECK YOUR BROWSER CONSOLE FOR THIS.
+      console.error("Error fetching dashboard data:", error); 
       toast.error("Failed to load dashboard data. Please try again.");
     } finally {
       setIsLoading(false);
+      console.log("fetchDashboardData: Finished. isLoading set to false.");
     }
   };
-  
-  // Calculate progress
+
   const completedVideosCount = trainingVideos.filter(video => video.completed).length;
   const totalVideosCount = trainingVideos.length;
   const progressPercentage = totalVideosCount > 0 ? Math.round((completedVideosCount / totalVideosCount) * 100) : 0;
-  
-  // Find next video for training
   const nextVideo = trainingVideos.find(video => !video.completed);
+  const passedAssessmentsCount = assessments.filter(a => a.attemptStatus === 'Passed').length;
+  const pendingAssessmentsCount = assessments.filter(a => !a.hasAttempted).length;
 
-  const handleStartTraining = (videoId: string) => { // videoId is now string (Firestore ID)
+  const handleStartTraining = (videoId: string) => {
     navigate(`/training-viewer/${videoId}`);
   };
 
@@ -202,14 +288,13 @@ const EmployeeDashboard = () => {
     toast.info("You have been logged out.");
     navigate('/');
   };
-  
 
-  const userName = employeeData?.fullName || cachedFullName || "Employee"; 
+  const userName = employeeData?.fullName || cachedFullName || "Employee";
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
-        <DashboardHeader onLogout={handleLogout} userName={userName} /> {/* Show header even on load */}
+        <DashboardHeader onLogout={handleLogout} userName={userName} />
         <div className="flex-grow flex flex-col items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-[#ea384c] mb-4" />
           <p className="text-xl text-gray-700">Loading your dashboard...</p>
@@ -236,36 +321,37 @@ const EmployeeDashboard = () => {
             <TabsTrigger value="certificates">Certificates</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="overview">
-            
-            <OverviewTab 
+            <OverviewTab
               progressPercentage={progressPercentage}
-              completedVideos={completedVideosCount}
-              totalVideos={totalVideosCount}
-              certificates={certificates} // Pass the fetched certificates
+              completedTrainings={completedVideosCount}
+              totalTrainings={totalVideosCount}
+              certificatesEarned={certificates.length}
+              pendingAssessmentsCount={pendingAssessmentsCount}
+              passedAssessmentsCount={passedAssessmentsCount}
               setActiveTab={setActiveTab}
-              nextVideo={nextVideo}
+              nextTrainingItem={nextVideo}
               handleStartTraining={handleStartTraining}
             />
           </TabsContent>
-          
+
           <TabsContent value="training">
-            <TrainingTab 
-              trainingVideos={trainingVideos} // Pass the fetched videos
-              handleStartTraining={handleStartTraining} 
+            <TrainingTab
+              trainingVideos={trainingVideos}
+              handleStartTraining={handleStartTraining}
             />
           </TabsContent>
-          
+
           <TabsContent value="certificates">
-            <CertificatesTab 
-              certificates={certificates} // Pass the fetched certificates
-              setActiveTab={setActiveTab} 
+            <CertificatesTab
+              certificates={certificates}
+              setActiveTab={setActiveTab}
             />
           </TabsContent>
 
           <TabsContent value="assessments">
-            <AssessmentsTab assessments={assessments} /> {/* Pass the fetched assessments */}
+            <AssessmentsTab assessments={assessments} />
           </TabsContent>
         </Tabs>
       </div>
