@@ -23,7 +23,7 @@ const EmployeeLogin = () => {
     
       try {
         // 1. Query Firestore for the employee user by email
-        const employeesCollectionRef = collection(db, 'employees'); // Assuming your collection is named 'employees'
+        const employeesCollectionRef = collection(db, 'employees');
         const q = query(employeesCollectionRef, where("email", "==", email));
         const querySnapshot = await getDocs(q);
   
@@ -33,7 +33,6 @@ const EmployeeLogin = () => {
           return;
         }
   
-        // Assuming email is unique, there should only be one doc
         const employeeDoc = querySnapshot.docs[0];
         const employeeData = employeeDoc.data();
   
