@@ -1,113 +1,144 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, ArrowLeft, Play, Pause, FileVideo } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress"; // Assuming this is available from shadcn/ui
+import { Star, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'; // Removed Play, Pause as ReactPlayer handles controls
 import { toast } from "sonner";
+import { doc, getDoc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { db } from '@/firebaseConfig';
+import ReactPlayer from 'react-player/youtube'; // Or your preferred player
 
-// Mock training content
-const mockVideoContent = {
-  id: 1,
-  title: "Introduction to Brake Systems",
-  description: "Learn about the fundamentals of automotive brake systems.",
-  videoUrl: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4", // Sample video URL
-  pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", // Sample PDF URL
-  duration: "45 minutes",
-  department: "Mechanical",
-  totalPages: 10,
-};
+interface TrainingContentData {
+  id: string;
+  title: string;
+  description?: string;
+  contentType: 'video' | 'pdf';
+  fileUrl: string;
+  duration?: string;
+  department?: string;
+
+}
+
 
 const TrainingViewer = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [activeTab, setActiveTab] = useState("video");
+  const { videoId } = useParams<{ videoId: string }>(); // videoId is the training_content ID
+
+  const [content, setContent] = useState<TrainingContentData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCompletedByCurrentUser, setIsCompletedByCurrentUser] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false); // For "Mark as Complete" button
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
-  const [pdfProgress, setPdfProgress] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [rating, setRating] = useState<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  
-  // Get training ID from location state or default to mock content
-  const trainingContent = mockVideoContent;
+  const employeeId = localStorage.getItem('employeeId');
 
+  // Simplified activeTab logic for now, assuming content type dictates view
+  // const [activeTab, setActiveTab] = useState("video"); 
+
+  
   const handleBackToList = () => {
     navigate('/employee-dashboard');
   };
 
-  const togglePlayPause = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const handleVideoTimeUpdate = () => {
-    if (videoRef.current) {
-      const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
-      setVideoProgress(progress);
-      
-      // If video progress is 100%, show the quiz dialog
-      if (progress >= 95 && !showQuizDialog) {
-        setShowQuizDialog(true);
-        toast.success("You've completed this video! Ready for the quiz?");
-      }
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < trainingContent.totalPages) {
-      setCurrentPage(currentPage + 1);
-      const newProgress = (currentPage + 1) / trainingContent.totalPages * 100;
-      setPdfProgress(newProgress);
-      
-      // If PDF progress is 100%, show the quiz dialog
-      if (newProgress >= 95 && !showQuizDialog) {
-        setShowQuizDialog(true);
-        toast.success("You've completed this PDF! Ready for the quiz?");
-      }
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-      const newProgress = (currentPage - 1) / trainingContent.totalPages * 100;
-      setPdfProgress(newProgress);
-    }
-  };
-
+  
   const handleRating = (stars: number) => {
     setRating(stars);
     toast.success(`Thank you for your ${stars}-star rating!`);
+    // TODO: Optionally save rating to Firestore
   };
 
-  const handleTakeQuiz = () => {
-    // Navigate to a quiz page or open a quiz component
-    setShowQuizDialog(false);
-    navigate('/employee-dashboard'); // Replace with actual quiz page path
-    toast.info("Quiz functionality will be implemented in the next version!");
-  };
+   // handleVideoTimeUpdate and togglePlayPause are not needed if ReactPlayer handles controls and progress.
+  // ReactPlayer's onProgress callback updates videoProgress directly.
+
   
   useEffect(() => {
-    // Track that the user has started this training
-    console.log("User started training:", trainingContent.title);
-    
-    return () => {
-      // Track that the user has left the training page
-      console.log("User left training:", trainingContent.title);
+    if (!videoId) {
+      toast.error("Training content ID is missing.");
+      navigate(-1);
+      return;
+    }
+    if (!employeeId) {
+      toast.error("User not identified. Please log in.");
+      navigate('/login');
+      return;
+    }
+
+    const fetchContentAndLogView = async () => {
+      setIsLoading(true);
+      try {
+        const contentRef = doc(db, "training_content", videoId);
+        const contentSnap = await getDoc(contentRef);
+
+        if (contentSnap.exists()) {
+          const contentData = { id: contentSnap.id, ...contentSnap.data() } as TrainingContentData;
+          setContent(contentData);
+          // setActiveTab(contentData.contentType); // Set tab based on fetched content type
+
+          // Log view - increment view count
+          await updateDoc(contentRef, {
+            views: increment(1)
+          });
+
+          // Check if this user has completed this content
+          const employeeRef = doc(db, "employees", employeeId);
+          const employeeSnap = await getDoc(employeeRef);
+          if (employeeSnap.exists()) {
+            const completedIds = employeeSnap.data()?.completedVideoIds || [];
+            setIsCompletedByCurrentUser(completedIds.includes(videoId));
+          }
+
+        } else {
+          toast.error("Training content not found.");
+          navigate('/employee-dashboard');
+        }
+      } catch (error) {
+        console.error("Error fetching training content:", error);
+        toast.error("Failed to load training content.");
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [trainingContent.title]);
+
+    fetchContentAndLogView();
+  }, [videoId, navigate, employeeId]);
+
+  const handleMarkAsComplete = async () => {
+    if (!videoId || !employeeId || isCompletedByCurrentUser || !content) return;
+
+    setIsUpdating(true);
+    try {
+      const employeeRef = doc(db, "employees", employeeId);
+      await updateDoc(employeeRef, {
+        completedVideoIds: arrayUnion(videoId)
+      });
+
+      const contentRef = doc(db, "training_content", videoId);
+      await updateDoc(contentRef, {
+        completions: increment(1)
+      });
+
+      setIsCompletedByCurrentUser(true);
+      toast.success(`"${content.title}" marked as complete!`);
+    } catch (error) {
+      console.error("Error marking as complete:", error);
+      toast.error("Failed to mark as complete.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-[#ea384c]" /> <p className="ml-4 text-xl">Loading Training...</p></div>;
+  }
+
+  if (!content) {
+    return <div className="min-h-screen flex items-center justify-center"><p>Content not found.</p></div>;
+  }
+   
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,135 +157,90 @@ const TrainingViewer = () => {
           </Button>
         </div>
       </header>
-
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">{trainingContent.title}</h2>
-          <p className="text-gray-600">{trainingContent.description}</p>
+        <h2 className="text-3xl font-bold mb-2">{content.title}</h2>
+          <p className="text-gray-600">{content.description}</p>
           <div className="flex items-center mt-2">
-            <span className="inline-block bg-black text-white px-3 py-1 rounded text-sm mr-4">
-              {trainingContent.department}
-            </span>
-            <span className="text-gray-500 text-sm">
-              Duration: {trainingContent.duration}
-            </span>
+          {content.department && (
+              <span className="inline-block bg-black text-white px-3 py-1 rounded text-sm mr-4">
+                {content.department}
+              </span>
+            )}
+            {content.duration && (
+              <span className="text-gray-500 text-sm">
+                Duration: {content.duration}
+              </span>
+            )}
           </div>
         </div>
 
-        <Tabs defaultValue="video" onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-2 max-w-md">
-            <TabsTrigger value="video">Video Content</TabsTrigger>
-            <TabsTrigger value="pdf">PDF Content</TabsTrigger>
-          </TabsList>
-          
-          {/* Video Tab */}
-          <TabsContent value="video" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Training Video</CardTitle>
-                <CardDescription>Watch the full video to complete this module</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-video bg-black rounded-md overflow-hidden relative">
-                  <video 
-                    ref={videoRef}
-                    className="w-full h-full object-contain"
-                    src={trainingContent.videoUrl}
-                    onTimeUpdate={handleVideoTimeUpdate}
-                    onEnded={() => setIsPlaying(false)}
-                  />
-                  {!isPlaying && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                      <Button 
-                        onClick={togglePlayPause} 
-                        size="lg"
-                        className="bg-[#ea384c] hover:bg-[#d9293d]"
-                      >
-                        <Play className="mr-2 h-5 w-5" />
-                        Play Video
-                      </Button>
-                    </div>
-                  )}
-                </div>
+        {/* Content Display Area */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{content.contentType === 'video' ? "Training Video" : "Training Document"}</CardTitle>
+            <CardDescription>
+              {content.contentType === 'video' ? "Watch the full video to complete this module." : "Read through the document to complete this module."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {content.contentType === 'video' && (
+              <div className="aspect-video bg-black rounded-md overflow-hidden relative">
+                {/* Using ReactPlayer for broader compatibility, assuming fileUrl is a direct video URL or YouTube link */}
+                <ReactPlayer 
+                  url={content.fileUrl} 
+                  playing={isPlaying}
+                  controls 
+                  width="100%" 
+                  height="100%"
+                  onProgress={(state) => setVideoProgress(state.played * 100)}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => {
+                    setIsPlaying(false);
+                    // Optionally auto-mark as complete or prompt user
+                  }}
+                />
+              </div>
+            )}
 
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Progress:</span>
-                    <span className="text-sm font-medium">{Math.round(videoProgress)}%</span>
-                  </div>
-                  <Progress value={videoProgress} className="h-2" />
-                </div>
+            {content.contentType === 'pdf' && (
+              <div className="aspect-[3/4] md:aspect-video bg-white border rounded-md overflow-hidden mb-4">
+                <iframe 
+                  src={content.fileUrl}
+                  className="w-full h-[600px] md:h-full" // Ensure iframe has enough height
+                  title={content.title}
+                />
+              </div>
+            )}
 
-                <div className="mt-4 flex items-center justify-between">
-                  <Button onClick={togglePlayPause} variant="outline" className="flex items-center">
-                    {isPlaying ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                    {isPlaying ? "Pause" : "Play"}
-                  </Button>
-                  <div className="flex items-center">
-                    Rate this video: 
-                    <div className="ml-2 flex">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star 
-                          key={star}
-                          className={`h-5 w-5 cursor-pointer ${
-                            rating && star <= rating 
-                              ? 'text-yellow-500 fill-yellow-500' 
-                              : 'text-gray-300'
-                          }`}
-                          onClick={() => handleRating(star)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+            {/* Progress and Rating - can be simplified or enhanced */}
+            {content.contentType === 'video' && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Progress:</span>
+                  <span className="text-sm font-medium">{Math.round(videoProgress)}%</span>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* PDF Tab */}
-          <TabsContent value="pdf" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Training Document</CardTitle>
-                <CardDescription>Read through the document to complete this module</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-[3/4] bg-white border rounded-md overflow-hidden mb-4">
-                  <iframe 
-                    src={`${trainingContent.pdfUrl}#page=${currentPage}`}
-                    className="w-full h-full"
-                    title="Training Document"
-                  />
+                <Progress value={videoProgress} className="h-2 [&>*]:bg-[#ea384c]" />
                 </div>
+            )}
 
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Progress:</span>
-                    <span className="text-sm font-medium">
-                      Page {currentPage} of {trainingContent.totalPages} ({Math.round(pdfProgress)}%)
-                    </span>
-                  </div>
-                  <Progress value={pdfProgress} className="h-2" />
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              {!isCompletedByCurrentUser ? (
+                <Button 
+                  onClick={handleMarkAsComplete} 
+                  disabled={isUpdating}
+                  size="lg"
+                  className="w-full sm:w-auto bg-[#ea384c] hover:bg-[#d9293d]"
+                >
+                  {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                  Mark as Complete
+                </Button>
+              ) : (
+                <div className="w-full sm:w-auto text-center p-3 bg-green-100 text-green-700 rounded-md border border-green-300">
+                  <CheckCircle className="inline-block mr-2 h-5 w-5" /> You have completed this training!
                 </div>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <div>
-                    <Button 
-                      onClick={handlePrevPage} 
-                      disabled={currentPage <= 1}
-                      variant="outline" 
-                      className="mr-2"
-                    >
-                      Previous Page
-                    </Button>
-                    <Button 
-                      onClick={handleNextPage} 
-                      disabled={currentPage >= trainingContent.totalPages}
-                      variant="outline"
-                    >
-                      Next Page
-                    </Button>
-                  </div>
+              )}
                   <div className="flex items-center">
                     Rate this document: 
                     <div className="ml-2 flex">
@@ -272,31 +258,10 @@ const TrainingViewer = () => {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Quiz Dialog */}
-      <Dialog open={showQuizDialog} onOpenChange={setShowQuizDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ready to test your knowledge?</DialogTitle>
-            <DialogDescription>
-              You've completed this training module. Would you like to take a quiz to earn your certificate?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowQuizDialog(false)}>
-              Not Yet
-            </Button>
-            <Button onClick={handleTakeQuiz} className="bg-[#ea384c] hover:bg-[#d9293d]">
-              Take Quiz
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              
+          </CardContent>
+        </Card>
+      </div>              
     </div>
   );
 };
