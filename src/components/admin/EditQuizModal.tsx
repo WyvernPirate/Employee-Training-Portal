@@ -17,9 +17,8 @@ import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Assessment, TrainingContent } from '@/pages/AdminDashboard';
 
-// Define QuizQuestionEdit based on the structure of a question in Assessment
 interface QuizQuestionEdit {
-  id: string; // Temporary client-side ID
+  id: string;
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
@@ -57,8 +56,8 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
   useEffect(() => {
     if (quizToEdit) {
       setTitle(quizToEdit.title);
-      setDescription(quizToEdit.description || ""); // Keep existing relatedContentId if it's already set, otherwise default to "none" or ""
-      setRelatedContentId(quizToEdit.relatedTrainingContentId || "none"); // Default to "none" if no related content
+      setDescription(quizToEdit.description || ""); 
+      setRelatedContentId(quizToEdit.relatedTrainingContentId || "none");
       setDepartment(Array.isArray(quizToEdit.department) ? quizToEdit.department[0] : quizToEdit.department || departmentOptions[0]);
       setQuestions(quizToEdit.questions.map((q, index) => ({ ...q, id: `q-${index}-${Date.now()}` })) || []);
       setPassingScore(quizToEdit.passingScore || 70);
@@ -106,9 +105,9 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
     const updatedData: Partial<Omit<Assessment, 'id' | 'createdAt'>> = {
       title,
       description,
-      relatedTrainingContentId: relatedContentId === "none" ? null : relatedContentId, // Convert "none" back to null for Firestore
+      relatedTrainingContentId: relatedContentId === "none" ? null : relatedContentId, 
       department,
-      questions: questions.map(({ id, ...rest }) => rest), // Remove temporary client-side id
+      questions: questions.map(({ id, ...rest }) => rest), 
       passingScore,
       timeLimitMinutes: timeLimit,
       grantsCertificate,
@@ -119,7 +118,8 @@ const EditQuizModal: React.FC<EditQuizModalProps> = ({
       await onSave(quizToEdit.id, updatedData);
       onClose();
     } catch (error) {
-      // Error is handled by onSave, toast shown there
+      toast.error("Failed to save quiz. Please try again.");
+      console.error("Error saving quiz:", error);
     }
   };
 
