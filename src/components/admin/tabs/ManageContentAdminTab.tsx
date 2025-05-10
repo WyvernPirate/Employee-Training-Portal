@@ -1,5 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,22 +16,43 @@ import { TrainingContent } from '@/pages/AdminDashboard'; // Assuming interfaces
 
 interface ManageContentAdminTabProps {
   trainingContents: TrainingContent[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
   onEditContent: (content: TrainingContent) => void;
   onDeleteContent: (content: TrainingContent) => void;
 }
 
 const ManageContentAdminTab: React.FC<ManageContentAdminTabProps> = ({
   trainingContents,
+  searchQuery,
+  setSearchQuery,
   onEditContent,
   onDeleteContent,
 }) => {
+  const filteredContents = trainingContents.filter(content =>
+    content.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Manage Training Content</CardTitle>
-        <CardDescription>View, edit, or delete existing training materials.</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-grow">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search content by title..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        {/* Optional: Add department filter here if needed later */}
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Training Content</CardTitle>
+          <CardDescription>View, edit, or delete existing training materials.</CardDescription>
+        </CardHeader>
+        <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -40,11 +63,11 @@ const ManageContentAdminTab: React.FC<ManageContentAdminTabProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {trainingContents.length === 0 && (
-              <TableRow><TableCell colSpan={4} className="text-center">No training content found.</TableCell></TableRow>
+           {filteredContents.length === 0 && (
+               <TableRow><TableCell colSpan={4} className="text-center">No training content found.</TableCell></TableRow>
             )}
-            {trainingContents.map((content) => (
-              <TableRow key={content.id}>
+            {filteredContents.map((content) => (
+               <TableRow key={content.id}>
                 <TableCell className="font-medium">{content.title}</TableCell>
                 <TableCell><Badge variant={content.contentType === 'video' ? 'default' : 'secondary'}>{content.contentType.toUpperCase()}</Badge></TableCell>
                 <TableCell>{Array.isArray(content.department) ? content.department.join(', ') : content.department}</TableCell>
@@ -58,6 +81,7 @@ const ManageContentAdminTab: React.FC<ManageContentAdminTabProps> = ({
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 };
 
