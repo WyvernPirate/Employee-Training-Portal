@@ -1,5 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,23 +16,40 @@ import { Assessment } from '@/pages/AdminDashboard'; // Assuming interfaces are 
 
 interface ManageQuizzesAdminTabProps {
   assessments: Assessment[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
   onEditQuiz: (quiz: Assessment) => void;
   onDeleteQuiz: (quiz: Assessment) => void;
 }
 
 const ManageQuizzesAdminTab: React.FC<ManageQuizzesAdminTabProps> = ({
   assessments,
+  searchQuery,
+  setSearchQuery,
   onEditQuiz,
   onDeleteQuiz,
 }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Manage Quizzes</CardTitle>
-        <CardDescription>View, edit, or delete existing quizzes.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-grow">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search quizzes by title..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        {/* Optional: Add department filter here if needed later */}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Quizzes</CardTitle>
+          <CardDescription>View, edit, or delete existing quizzes.</CardDescription>
+        </CardHeader>
+        <CardContent> <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
@@ -58,6 +77,7 @@ const ManageQuizzesAdminTab: React.FC<ManageQuizzesAdminTabProps> = ({
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 };
 
