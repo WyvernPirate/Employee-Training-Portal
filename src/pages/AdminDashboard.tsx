@@ -1,23 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { Upload, Users, Video, FileText, LogOut, Plus, Search } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { LogOut } from 'lucide-react';
 import EmployeeDetailsModal from '@/components/admin/EmployeeDetailsModal';
 
 import { db, storage } from '@/firebaseConfig';
@@ -27,8 +13,17 @@ import ConfirmDeleteDialog from '@/components/admin/ConfirmDeleteDialog';
 import EditContentModal from '@/components/admin/EditContentModal';
 import EditQuizModal from '@/components/admin/EditQuizModal';
 
+// Import new tab components
+import OverviewAdminTab from '@/components/admin/tabs/OverviewAdminTab';
+import EmployeesAdminTab from '@/components/admin/tabs/EmployeesAdminTab';
+import UploadContentAdminTab from '@/components/admin/tabs/UploadContentAdminTab';
+import CreateQuizAdminTab from '@/components/admin/tabs/CreateQuizAdminTab';
+import ManageContentAdminTab from '@/components/admin/tabs/ManageContentAdminTab';
+import ManageQuizzesAdminTab from '@/components/admin/tabs/ManageQuizzesAdminTab';
+
+
 // Interfaces for Firestore data
-interface Employee {
+export interface Employee {
   id: string;
   firstName: string;
   surname: string;
@@ -69,7 +64,7 @@ export interface Assessment {
 
 }
 
-interface QuizQuestion {
+export interface QuizQuestion {
   id: string; // For React key, e.g., using Date.now().toString() or a UUID
   questionText: string;
   options: string[];
@@ -589,536 +584,93 @@ useEffect(() => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle>Total Employees</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="flex items-center">
-                    <Users className="h-8 w-8 text-[#ea384c] mr-3" />
-                    <div className="text-3xl font-bold">{employees.length}</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle>Training Content</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="flex items-center">
-                  <Video className="h-8 w-8 text-[#ea384c] mr-3" />
-                    <div className="text-3xl font-bold">{trainingContents.length}</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle>Certifications</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="flex items-center">
-                    <FileText className="h-8 w-8 text-[#ea384c] mr-3" />
-                    <div className="text-3xl font-bold">{totalCertificatesCount}</div>
-                   </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Training Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Views</TableHead>
-                        <TableHead>Completions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {/* Display the first 5 items from the already sorted and filtered list */}
-                    {filteredTrainingContent.slice(0, 5).map((content) => ( 
-                         <TableRow key={content.id}>
-                          <TableCell className="font-medium">{content.title}</TableCell>
-                          <TableCell>
-                            {content.contentType === 'video' ?
-                              <Badge className="bg-blue-500">Video</Badge> :
-                              <Badge className="bg-orange-500">PDF</Badge>
-                            }
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{Array.isArray(content.department) ? content.department.join(', ') : content.department}</Badge>
-                          </TableCell>
-                          <TableCell>{content.views}</TableCell>
-                          <TableCell>{content.completions}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+            <OverviewAdminTab
+              employeesCount={employees.length}
+              trainingContentsCount={trainingContents.length}
+              totalCertificatesCount={totalCertificatesCount}
+              recentTrainingContent={filteredTrainingContent}
+            />
           </TabsContent>
 
           {/* Employees Tab */}
           <TabsContent value="employees" className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
-              <div className="relative flex-grow">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  placeholder="Search employees..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              <Select
-                value={departmentFilter}
-                onValueChange={setDepartmentFilter}
-              >
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                {departmentOptions.filter(d => d !== "All").map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Employee List</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead>Certifications</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEmployees.map((employee) => (
-                        <TableRow key={employee.id}>
-                          <TableCell className="font-medium">{employee.firstName} {employee.surname}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{employee.department}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                                <div
-                                  className="bg-[#ea384c] h-2.5 rounded-full"
-                                  style={{ width: `${employee.progress || 0}%` }}
-                                ></div>
-                              </div>
-                              <span>{employee.progress || 0}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>{employee.certificationsCount || 0}</TableCell>
-                          <TableCell className="text-right">
-                          <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleViewEmployeeDetails(employee)}
-                            >View Details</Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+            <EmployeesAdminTab
+              employees={filteredEmployees}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              departmentFilter={departmentFilter}
+              setDepartmentFilter={setDepartmentFilter}
+              departmentOptions={departmentOptions}
+              onViewEmployeeDetails={handleViewEmployeeDetails}
+            />
           </TabsContent>
 
           {/* Upload Content Tab */}
           <TabsContent value="content">
-            <Card>
-              <CardHeader>
-                <CardTitle>Upload Training Content</CardTitle>
-                <CardDescription>Add new training videos or PDF documents for employees</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleContentUpload} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Content Title</Label>
-                    <Input id="title" value={contentTitle} onChange={(e) => setContentTitle(e.target.value)} placeholder="Enter content title" required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" value={contentDescription} onChange={(e) => setContentDescription(e.target.value)} placeholder="Enter content description" rows={3} />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="contentType">Content Type</Label>
-                      <Select value={contentType} onValueChange={(value) => setContentType(value as 'video' | 'pdf')}>
-                        <SelectTrigger id="contentType">
-                          <SelectValue placeholder="Select content type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="video">Video</SelectItem>
-                          <SelectItem value="pdf">PDF Document</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="department">Department</Label>
-                      <Select value={contentDepartment} onValueChange={setContentDepartment}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departmentOptions.map(dept => (
-                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Video Upload Section */}
-                  <div className="space-y-2">
-                  <Label htmlFor="content-file-input">Content File (Video or PDF)</Label>
-                    <div 
-                      className={`border-2 border-dashed rounded-md p-6 text-center transition-colors ${isDraggingContent ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
-                      onDragOver={handleContentDragOver}
-                      onDragLeave={handleContentDragLeave}
-                      onDrop={handleContentDrop}
-                    > 
-                    <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="flex">
-                          <Video className="h-10 w-10 text-gray-400" />
-                          <FileText className="h-10 w-10 text-gray-400 ml-2" />
-                        </div>
-                        <p className="text-sm text-gray-500">
-                          Click to upload or drag and drop video files or PDF documents
-                          {isDraggingContent && <span className="text-blue-600 font-semibold"> Release to drop!</span>}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                           Accepted: MP4, MOV, AVI, PDF<br />
-                           Video: Video files (max 500MB)<br />
-                            PDF: PDF files (max 50MB)
-                        </p>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2"
-                          onClick={() => contentFileInputRef.current?.click()}
-                        >
-                          Choose File
-                        </Button>
-                      </div>
-                     <Input 
-                        ref={contentFileInputRef}
-                        id="content-file-input" 
-                        type="file" 
-                        accept=".mp4,.mov,.avi,.mkv,.webm,.pdf" // Expanded video types slightly
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setContentFile(e.target.files[0]);
-                          }
-                        }} 
-                        className="sr-only" // Hide the default input, rely on drop zone or label click
-                      />
-                      {contentFile && <p className="text-sm text-green-600 mt-2">Selected: {contentFile.name}</p>}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                  <Label htmlFor="thumbnail-input">Thumbnail Image (optional)</Label>
-                    <div
-                      className={`border-2 border-dashed rounded-md p-6 text-center transition-colors ${isDraggingThumbnail ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
-                      onDragOver={handleThumbnailDragOver}
-                      onDragLeave={handleThumbnailDragLeave}
-                      onDrop={handleThumbnailDrop}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <FileText className="h-10 w-10 text-gray-400" /> {/* Using FileText as a generic icon for image */}
-                        <p className="text-sm text-gray-500">
-                          Click to upload or drag and drop a thumbnail image
-                          {isDraggingThumbnail && <span className="text-blue-600 font-semibold"> Release to drop!</span>}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Accepted: PNG, JPG, GIF (max 2MB recommended)
-                        </p>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2"
-                          onClick={() => thumbnailFileInputRef.current?.click()}
-                        >
-                          Choose Thumbnail
-                        </Button>
-                      </div>
-                      <Input
-                        ref={thumbnailFileInputRef} 
-                        id="thumbnail-input" 
-                        type="file" 
-                        accept="image/png, image/jpeg, image/gif, image/webp" 
-                        onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)} 
-                        className="sr-only" 
-                      />
-                      {thumbnailFile && <p className="text-sm text-green-600 mt-2">Selected: {thumbnailFile.name}</p>}
-                     </div>
-                  </div>
-
-                  {isUploading && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                      <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                      <p className="text-xs text-center">{Math.round(uploadProgress)}%</p>
-                    </div>
-                  )}
-
-                  <Button type="submit" className="w-full" disabled={isUploading}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isUploading ? `Uploading... ${Math.round(uploadProgress)}%` : "Upload Content"}
-                    </Button>
-                </form>
-              </CardContent>
-            </Card>
+            <UploadContentAdminTab
+              contentTitle={contentTitle} setContentTitle={setContentTitle}
+              contentDescription={contentDescription} setContentDescription={setContentDescription}
+              contentType={contentType} setContentType={setContentType}
+              contentDepartment={contentDepartment} setContentDepartment={setContentDepartment}
+              contentFile={contentFile} setContentFile={setContentFile}
+              thumbnailFile={thumbnailFile} setThumbnailFile={setThumbnailFile}
+              uploadProgress={uploadProgress} isUploading={isUploading}
+              isDraggingContent={isDraggingContent}
+              handleContentDragOver={handleContentDragOver}
+              handleContentDragLeave={handleContentDragLeave}
+              handleContentDrop={handleContentDrop}
+              contentFileInputRef={contentFileInputRef}
+              isDraggingThumbnail={isDraggingThumbnail}
+              handleThumbnailDragOver={handleThumbnailDragOver}
+              handleThumbnailDragLeave={handleThumbnailDragLeave}
+              handleThumbnailDrop={handleThumbnailDrop}
+              thumbnailFileInputRef={thumbnailFileInputRef}
+              handleContentUpload={handleContentUpload}
+              departmentOptions={departmentOptions}
+            />
           </TabsContent>
+          
 
           {/* Quizzes Tab */}
           <TabsContent value="quizzes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Quiz</CardTitle>
-                <CardDescription>Add assessments for training content</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleQuizCreation} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="quiz-title">Quiz Title</Label>
-                    <Input id="quiz-title" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} placeholder="Enter quiz title" required />
-                    </div>
-
-                  <div className="space-y-2">
-                  <Label htmlFor="quiz-description">Quiz Description (optional)</Label>
-                    <Textarea id="quiz-description" value={quizDescription} onChange={(e) => setQuizDescription(e.target.value)} placeholder="Enter a brief description for the quiz" rows={2} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="related-content">Related Training Content</Label>
-                    <Select value={quizRelatedContent} onValueChange={setQuizRelatedContent}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select content" />
-                      </SelectTrigger>
-                      <SelectContent>
-                      {trainingContents.map(content => (
-                          <SelectItem key={content.id} value={`content-${content.id}`}>
-                            {content.title} ({content.contentType})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="quiz-department">Department</Label>
-                      <Select value={quizDepartment} onValueChange={setQuizDepartment}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department for this quiz" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departmentOptions.map(dept => (
-                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  <div className="space-y-2">
-                    <Label>Questions</Label>
-                    <div className="space-y-4">
-                    {quizQuestions.map((question, qIndex) => (
-                       <Card key={question.id} className="p-4">
-                       <div className="flex justify-between items-center mb-2">
-                         <Label htmlFor={`question-${question.id}`}>Question {qIndex + 1}</Label>
-                         {quizQuestions.length > 1 && (
-                           <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveQuestion(question.id)}>
-                             Remove
-                           </Button>
-                         )}
-                       </div>
-                       <Textarea
-                            id={`question-${question.id}`}
-                            placeholder="Enter question text"
-                            value={question.questionText}
-                            onChange={(e) => handleQuestionTextChange(question.id, e.target.value)}
-                            required
-                            className="mb-2"
-                        />
-                        <Label className="text-sm">Options (Mark correct answer):</Label>
-                        {question.options.map((option, oIndex) => (
-                            <div key={oIndex} className="flex items-center gap-2 mt-1">
-                              <input
-                                type="radio"
-                                id={`q${question.id}-opt${oIndex}`}
-                                name={`q${question.id}-correct`}
-                                checked={question.correctAnswerIndex === oIndex}
-                                onChange={() => handleCorrectAnswerChange(question.id, oIndex)}
-                                className="form-radio h-4 w-4 text-[#ea384c] focus:ring-[#ea384c]"
-                              />
-                              <Input
-                                placeholder={`Option ${oIndex + 1}`}
-                                value={option}
-                                onChange={(e) => handleOptionChange(question.id, oIndex, e.target.value)}
-                                required
-                              />
-                            </div>
-                        ))} 
-                        </Card>
-                      ))}
-                      <Button type="button" variant="outline" className="w-full" onClick={handleAddQuestion}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Question
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="passing-score">Passing Score (%)</Label>
-                      <Input id="passing-score" type="number" min="1" max="100" value={quizPassingScore} onChange={(e) => setQuizPassingScore(parseInt(e.target.value))} required />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="time-limit">Time Limit (minutes)</Label>
-                      <Input id="time-limit" type="number" min="1" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(parseInt(e.target.value))} required />
-                    </div>
-                  </div>
-                  <div className="space-y-2 border-t pt-4 mt-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="quiz-grants-certificate"
-                        checked={quizGrantsCertificate}
-                        onChange={(e) => setQuizGrantsCertificate(e.target.checked)}
-                        className="form-checkbox h-5 w-5 text-[#ea384c] rounded focus:ring-[#ea384c]"
-                      />
-                      <Label htmlFor="quiz-grants-certificate">Grants a Certificate upon Passing?</Label>
-                    </div>
-                    {quizGrantsCertificate && (
-                      <div className="space-y-2 pl-7">
-                        <Label htmlFor="quiz-certificate-title">Certificate Title</Label>
-                        <Input id="quiz-certificate-title" value={quizCertificateTitle} onChange={(e) => setQuizCertificateTitle(e.target.value)} placeholder="e.g., Certified Brake Systems Technician" required={quizGrantsCertificate} />
-                      </div>
-                    )}
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isUploading}>
-                     Create Quiz
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+            <CreateQuizAdminTab
+              quizTitle={quizTitle} setQuizTitle={setQuizTitle}
+              quizDescription={quizDescription} setQuizDescription={setQuizDescription}
+              quizRelatedContent={quizRelatedContent} setQuizRelatedContent={setQuizRelatedContent}
+              quizDepartment={quizDepartment} setQuizDepartment={setQuizDepartment}
+              quizQuestions={quizQuestions} setQuizQuestions={setQuizQuestions}
+              quizPassingScore={quizPassingScore} setQuizPassingScore={setQuizPassingScore}
+              quizTimeLimit={quizTimeLimit} setQuizTimeLimit={setQuizTimeLimit}
+              quizGrantsCertificate={quizGrantsCertificate} setQuizGrantsCertificate={setQuizGrantsCertificate}
+              quizCertificateTitle={quizCertificateTitle} setQuizCertificateTitle={setQuizCertificateTitle}
+              handleQuizCreation={handleQuizCreation}
+              handleAddQuestion={handleAddQuestion}
+              handleRemoveQuestion={handleRemoveQuestion}
+              handleQuestionTextChange={handleQuestionTextChange}
+              handleOptionChange={handleOptionChange}
+              handleCorrectAnswerChange={handleCorrectAnswerChange}
+              trainingContents={trainingContents}
+              departmentOptions={departmentOptions}
+              isSavingQuiz={isUploading} 
+            />
           </TabsContent>
 
           {/* Manage Content Tab */}
           <TabsContent value="manageContent">
-            <Card>
-              <CardHeader>
-                <CardTitle>Manage Training Content</CardTitle>
-                <CardDescription>View, edit, or delete existing training materials.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {trainingContents.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center">No training content found.</TableCell>
-                      </TableRow>
-                    )}
-                    {trainingContents.map((content) => (
-                      <TableRow key={content.id}>
-                        <TableCell className="font-medium">{content.title}</TableCell>
-                        <TableCell>
-                          <Badge variant={content.contentType === 'video' ? 'default' : 'secondary'}>
-                            {content.contentType.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{Array.isArray(content.department) ? content.department.join(', ') : content.department}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEditContentInit(content)}>Edit</Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteContentInit(content)}>Delete</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <ManageContentAdminTab
+              trainingContents={trainingContents}
+              onEditContent={handleEditContentInit}
+              onDeleteContent={handleDeleteContentInit}
+            />
           </TabsContent>
 
           {/* Manage Quizzes Tab */}
           <TabsContent value="manageQuizzes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Manage Quizzes</CardTitle>
-                <CardDescription>View, edit, or delete existing quizzes.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Questions</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assessments.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center">No quizzes found.</TableCell>
-                      </TableRow>
-                    )}
-                    {assessments.map((quiz) => (
-                      <TableRow key={quiz.id}>
-                        <TableCell className="font-medium">{quiz.title}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {Array.isArray(quiz.department) ? quiz.department.join(', ') : quiz.department || 'N/A'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{quiz.questions.length}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEditQuizInit(quiz)}>Edit</Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteQuizInit(quiz)}>Delete</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <ManageQuizzesAdminTab
+              assessments={assessments}
+              onEditQuiz={handleEditQuizInit}
+              onDeleteQuiz={handleDeleteQuizInit}
+            />
           </TabsContent>
         </Tabs>
       </div>
