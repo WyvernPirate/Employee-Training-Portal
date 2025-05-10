@@ -30,9 +30,12 @@ export interface Employee {
   email: string;
   department: string;
   completedVideoIds?: string[];
-  // Calculated fields (not directly in Firestore doc, but useful for display)
+  // Calculated fields
   progress?: number;
   certificationsCount?: number;
+  certificatesAwarded?: AdminCertificate[]; 
+  detailedTrainingProgress?: TrainingProgressItem[];
+
 }
 
 export interface TrainingContent {
@@ -69,6 +72,20 @@ export interface QuizQuestion {
   questionText: string;
   options: string[];
   correctAnswerIndex: number; // Index of the correct option
+}
+
+// Interface for certificates to be displayed in admin modal
+export interface AdminCertificate {
+  id: string;
+  title: string;
+  issuedDate: Date;
+}
+
+export interface TrainingProgressItem {
+  contentId: string;
+  contentTitle: string;
+  contentType: 'video' | 'pdf';
+  status: 'Completed' | 'Pending';
 }
 
 const departmentOptions = [
@@ -313,22 +330,39 @@ useEffect(() => {
 
       // Fetch all training content to calculate progress (we might already have this, but let's ensure)
       const allTrainingContentSnapshot = await getDocs(collection(db, "training_content"));
-      const allTrainingVideos = allTrainingContentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const totalNumberOfTrainings = allTrainingVideos.length;
+      const allTrainingItems = allTrainingContentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingContent));
+      const totalNumberOfTrainings = allTrainingItems.length;
 
       // Fetch all certificates to count per employee
       const allCertificatesSnapshot = await getDocs(collection(db, "certificates"));
-      const allCertificates = allCertificatesSnapshot.docs.map(doc => ({ employeeId: doc.data().employeeId, ...doc.data() }));
+      const allCertificates = allCertificatesSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          employeeId: data.employeeId,
+          title: data.title,
+          issuedDate: data.issuedDate?.toDate ? data.issuedDate.toDate() : new Date(data.issuedDate),
+        } as AdminCertificate & { employeeId: string };
+      }); 
       setTotalCertificatesCount(allCertificates.length);
 
       const processedEmployees = rawEmployeesList.map(emp => {
         const completedCount = emp.completedVideoIds?.length || 0;
         const progress = totalNumberOfTrainings > 0 ? Math.round((completedCount / totalNumberOfTrainings) * 100) : 0;
-        const certificationsCount = allCertificates.filter(cert => cert.employeeId === emp.id).length;
+        const employeeCerts = allCertificates.filter(cert => cert.employeeId === emp.id);
+        
+        const detailedProgress: TrainingProgressItem[] = allTrainingItems.map(item => ({
+          contentId: item.id,
+          contentTitle: item.title,
+          contentType: item.contentType,
+          status: emp.completedVideoIds?.includes(item.id) ? 'Completed' : 'Pending',
+        })); 
         return {
           ...emp,
           progress,
-          certificationsCount,
+         certificationsCount: employeeCerts.length,
+          certificatesAwarded: employeeCerts,
+          detailedTrainingProgress: detailedProgress,
         };
       });
       setEmployees(processedEmployees);
