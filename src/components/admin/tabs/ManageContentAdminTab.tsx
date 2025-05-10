@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,6 +18,9 @@ import { TrainingContent } from '@/pages/AdminDashboard'; // Assuming interfaces
 interface ManageContentAdminTabProps {
   trainingContents: TrainingContent[];
   searchQuery: string;
+  departmentFilter: string;
+  setDepartmentFilter: (filter: string) => void;
+  departmentOptions: string[];
   setSearchQuery: (query: string) => void;
   onEditContent: (content: TrainingContent) => void;
   onDeleteContent: (content: TrainingContent) => void;
@@ -26,12 +30,12 @@ const ManageContentAdminTab: React.FC<ManageContentAdminTabProps> = ({
   trainingContents,
   searchQuery,
   setSearchQuery,
+  departmentFilter,
+  setDepartmentFilter,
+  departmentOptions,
   onEditContent,
   onDeleteContent,
 }) => {
-  const filteredContents = trainingContents.filter(content =>
-    content.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
   
   return (
     <div className="space-y-4">
@@ -45,8 +49,20 @@ const ManageContentAdminTab: React.FC<ManageContentAdminTabProps> = ({
             className="pl-8"
           />
         </div>
-        {/* Optional: Add department filter here if needed later */}
-      </div>
+        <Select
+          value={departmentFilter}
+          onValueChange={setDepartmentFilter}
+        >
+          <SelectTrigger className="w-full md:w-[200px]">
+            <SelectValue placeholder="Filter by Department" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {departmentOptions.map(dept => (
+              <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select></div>
       <Card>
         <CardHeader>
           <CardTitle>Manage Training Content</CardTitle>
@@ -63,10 +79,10 @@ const ManageContentAdminTab: React.FC<ManageContentAdminTabProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-           {filteredContents.length === 0 && (
-               <TableRow><TableCell colSpan={4} className="text-center">No training content found.</TableCell></TableRow>
+           {trainingContents.length === 0 && (
+              <TableRow><TableCell colSpan={4} className="text-center">No training content found.</TableCell></TableRow>
             )}
-            {filteredContents.map((content) => (
+            {trainingContents.map((content) => (
                <TableRow key={content.id}>
                 <TableCell className="font-medium">{content.title}</TableCell>
                 <TableCell><Badge variant={content.contentType === 'video' ? 'default' : 'secondary'}>{content.contentType.toUpperCase()}</Badge></TableCell>
