@@ -86,6 +86,7 @@ export interface TrainingProgressItem {
   contentTitle: string;
   contentType: 'video' | 'pdf';
   status: 'Completed' | 'Pending';
+  trainingDepartment: string | string[]; 
 }
 
 const departmentOptions = [
@@ -356,6 +357,7 @@ useEffect(() => {
           contentTitle: item.title,
           contentType: item.contentType,
           status: emp.completedVideoIds?.includes(item.id) ? 'Completed' : 'Pending',
+          trainingDepartment: item.department,
         })); 
         return {
           ...emp,
