@@ -278,6 +278,11 @@ useEffect(() => {
     return matchesSearch && matchesDepartment;
   });
 
+  // Filter assessments based on search query
+  const filteredAssessments = assessments.filter(assessment => {
+    const matchesSearch = assessment.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userType');
@@ -659,6 +664,8 @@ useEffect(() => {
           <TabsContent value="manageContent">
             <ManageContentAdminTab
               trainingContents={trainingContents}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
               onEditContent={handleEditContentInit}
               onDeleteContent={handleDeleteContentInit}
             />
@@ -667,7 +674,9 @@ useEffect(() => {
           {/* Manage Quizzes Tab */}
           <TabsContent value="manageQuizzes">
             <ManageQuizzesAdminTab
-              assessments={assessments}
+              assessments={filteredAssessments} 
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
               onEditQuiz={handleEditQuizInit}
               onDeleteQuiz={handleDeleteQuizInit}
             />
