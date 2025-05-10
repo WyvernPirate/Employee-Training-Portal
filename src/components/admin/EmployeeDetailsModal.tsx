@@ -35,6 +35,30 @@ const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ employee, i
     return null;
   }
 
+  // Filter detailedTrainingProgress to show only relevant items
+  const employeeDept = employee.department;
+  const relevantTrainingProgress = (employee.detailedTrainingProgress || []).filter(item => {
+    if (!item.trainingDepartment) return false; // Should ideally always exist
+
+    // Show if training is for "All" departments
+    if (item.trainingDepartment === "All" || (Array.isArray(item.trainingDepartment) && item.trainingDepartment.includes("All"))) {
+      return true;
+    }
+    // Show if training is for the employee's specific department
+    if (Array.isArray(item.trainingDepartment)) {
+      return item.trainingDepartment.includes(employeeDept);
+    }
+    return item.trainingDepartment === employeeDept;
+  });
+
+  // Sort the filtered relevantTrainingProgress: Pending first, then by title
+  const sortedTrainingProgress = [...relevantTrainingProgress].sort((a, b) => {
+    if (a.status === 'Pending' && b.status === 'Completed') return -1;
+    if (a.status === 'Completed' && b.status === 'Pending') return 1;
+    return a.contentTitle.localeCompare(b.contentTitle);
+  });
+  
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
@@ -101,7 +125,7 @@ const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ employee, i
           </TabsContent>
 
           <TabsContent value="progress" className="py-4 max-h-[400px] overflow-y-auto">
-            {employee.detailedTrainingProgress && employee.detailedTrainingProgress.length > 0 ? (
+            {sortedTrainingProgress.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -111,7 +135,7 @@ const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ employee, i
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {employee.detailedTrainingProgress.map((item) => (
+                  {sortedTrainingProgress.map((item) => (
                     <TableRow key={item.contentId}>
                       <TableCell className="font-medium">{item.contentTitle}</TableCell>
                       <TableCell>
@@ -131,7 +155,7 @@ const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ employee, i
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-center text-gray-500 py-4">No training data available.</p>
+              <p className="text-center text-gray-500 py-4">No relevant training data available for this employee's department.</p>
             )}
           </TabsContent>
         </Tabs>
