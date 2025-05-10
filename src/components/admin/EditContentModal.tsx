@@ -78,7 +78,7 @@ const EditContentModal: React.FC<EditContentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[625px]">
+      <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Training Content</DialogTitle>
           <DialogDescription>Make changes to "{contentToEdit.title}"</DialogDescription>
