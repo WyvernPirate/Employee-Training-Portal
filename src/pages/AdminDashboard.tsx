@@ -117,7 +117,10 @@ const AdminDashboard = () => {
 
   // Filtering states
   const [searchQuery, setSearchQuery] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState("all"); // For Employees tab
+  const [contentDepartmentFilter, setContentDepartmentFilter] = useState("all"); // For Manage Content tab
+  const [quizDepartmentFilter, setQuizDepartmentFilter] = useState("all"); // For Manage Quizzes tab
+  const [quizRelatedContentFilter, setQuizRelatedContentFilter] = useState("all"); 
 
   // State for Employee Details Modal
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -266,23 +269,34 @@ useEffect(() => {
   const filteredEmployees = employees.filter(employee => {
     const name = `${employee.firstName} ${employee.surname}`;
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || employee.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
-    return matchesSearch && matchesDepartment;
+    const matchesDepartment = employeeDepartmentFilter === "all" || employee.department === employeeDepartmentFilter;
+     return matchesSearch && matchesDepartment;
   });
 
   // Filter training content (client-side for now, can be optimized with Firestore queries)
   const filteredTrainingContent = trainingContents.filter(content => {
     const matchesSearch = content.title.toLowerCase().includes(searchQuery.toLowerCase());
-    // Simplified department check for now
-    const matchesDepartment = departmentFilter === "all" || (typeof content.department === 'string' && content.department === departmentFilter) || (Array.isArray(content.department) && content.department.includes(departmentFilter));
+   const departmentMatch = (dep: string | string[]) => {
+      if (contentDepartmentFilter === "all") return true;
+      if (Array.isArray(dep)) return dep.includes(contentDepartmentFilter);
+      return dep === contentDepartmentFilter;
+    };
+    const matchesDepartment = departmentMatch(content.department);
     return matchesSearch && matchesDepartment;
   });
 
   // Filter assessments based on search query
   const filteredAssessments = assessments.filter(assessment => {
     const matchesSearch = assessment.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+    const departmentMatch = (dep?: string | string[]) => {
+      if (quizDepartmentFilter === "all" || !dep) return true;
+      if (Array.isArray(dep)) return dep.includes(quizDepartmentFilter);
+      return dep === quizDepartmentFilter;
+    };
+    const matchesQuizDepartment = departmentMatch(assessment.department);
+    const matchesRelatedContent = quizRelatedContentFilter === "all" || assessment.relatedTrainingContentId === quizRelatedContentFilter;
+    return matchesSearch && matchesQuizDepartment && matchesRelatedContent;
+   });
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userType');
@@ -603,8 +617,8 @@ useEffect(() => {
               employees={filteredEmployees}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              departmentFilter={departmentFilter}
-              setDepartmentFilter={setDepartmentFilter}
+              departmentFilter={employeeDepartmentFilter}
+              setDepartmentFilter={setEmployeeDepartmentFilter}
               departmentOptions={departmentOptions}
               onViewEmployeeDetails={handleViewEmployeeDetails}
             />
@@ -663,9 +677,12 @@ useEffect(() => {
           {/* Manage Content Tab */}
           <TabsContent value="manageContent">
             <ManageContentAdminTab
-              trainingContents={trainingContents}
+              trainingContents={filteredTrainingContent} // Pass filtered content
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              departmentFilter={contentDepartmentFilter}
+              setDepartmentFilter={setContentDepartmentFilter}
+              departmentOptions={departmentOptions}
               onEditContent={handleEditContentInit}
               onDeleteContent={handleDeleteContentInit}
             />
@@ -676,6 +693,12 @@ useEffect(() => {
             <ManageQuizzesAdminTab
               assessments={filteredAssessments} 
               searchQuery={searchQuery}
+              departmentFilter={quizDepartmentFilter}
+              setDepartmentFilter={setQuizDepartmentFilter}
+              relatedContentFilter={quizRelatedContentFilter}
+              setRelatedContentFilter={setQuizRelatedContentFilter}
+              departmentOptions={departmentOptions}
+              allTrainingContents={trainingContents} // Pass all for the filter dropdown
               setSearchQuery={setSearchQuery}
               onEditQuiz={handleEditQuizInit}
               onDeleteQuiz={handleDeleteQuizInit}
