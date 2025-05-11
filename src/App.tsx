@@ -1,4 +1,5 @@
 import React from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -13,57 +14,37 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import QuizTaker from './pages/QuizTaker';
 import CertificateViewer from './pages/CertificateViewer';
  
-// Helper to get current auth status
-const useAuth = () => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  const userType = localStorage.getItem('userType') as 'employee' | 'admin' | null;
-  return { isAuthenticated, userType };
-};
-
-const App = () => {
-   
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  const userType = localStorage.getItem('userType') as 'employee' | 'admin' | null;
-
+const AppContent = () => {
+  // This component will now have access to the auth context
+  // The old direct localStorage checks for routing can be replaced by logic in ProtectedRoute
+  // and by checking currentUser from useAuth() if needed for specific redirect logic inside components.
+  const { currentUser, loading } = useAuth(); // Get currentUser from new context
+  
   return (
-    <Router>
+    <>
       <Toaster richColors position="top-right" /> {/* Global Toaster for notifications */}
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Index />} />
-        <Route 
-          path="/login" 
-          element={
-            isAuthenticated && userType === 'employee' ? <Navigate to="/employee-dashboard" replace /> :
-            isAuthenticated && userType === 'admin' ? <Navigate to="/admin-dashboard" replace /> : // Admins accidentally on /login
-            <Login />
-          } 
-        />
-        <Route 
-          path="/admin-login" 
-          element={
-            isAuthenticated && userType === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
-            isAuthenticated && userType === 'employee' ? <Navigate to="/employee-dashboard" replace /> : // Employees accidentally on /admin-login
-            <AdminLogin />
-          } 
-        />
-        
+          <Route path="/login" element={<Login />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+         
         
         {/* Protected Employee Routes */}
         <Route 
           path="/employee-dashboard" 
           element={
             <ProtectedRoute allowedRole="employee">
-               <EmployeeDashboard key={localStorage.getItem('employeeId') || 'employee_logged_out'} />
-            </ProtectedRoute>
+                             <EmployeeDashboard key={currentUser?.uid || 'employee_logged_out'} />
+               </ProtectedRoute>
           } 
         />
         <Route 
           path="/training-viewer/:videoId" 
           element={
             <ProtectedRoute allowedRole="employee">
-              <TrainingViewer key={localStorage.getItem('employeeId') || 'employee_viewer_logged_out'} />
-             </ProtectedRoute>
+                           <TrainingViewer key={currentUser?.uid || 'employee_viewer_logged_out'} />
+               </ProtectedRoute>
           } 
         />
 
@@ -72,8 +53,8 @@ const App = () => {
           path="/admin-dashboard" 
           element={
             <ProtectedRoute allowedRole="admin">
-              <AdminDashboard key={userType === 'admin' ? 'admin_session_active' : 'admin_logged_out'} />
-            </ProtectedRoute>
+               <AdminDashboard key={currentUser?.uid || 'admin_logged_out'} />
+              </ProtectedRoute>
           } 
         />
         {/* Protected Quiz Taker Route */}
@@ -81,7 +62,7 @@ const App = () => {
           path="/quiz/:quizId" 
           element={
             <ProtectedRoute allowedRole="employee">
-             <QuizTaker key={localStorage.getItem('employeeId') || 'quiz_taker_logged_out'} />
+            <QuizTaker key={currentUser?.uid || 'quiz_taker_logged_out'} />
            </ProtectedRoute>
           }
           />
@@ -90,14 +71,24 @@ const App = () => {
           path="/certificate/:certificateId" 
           element={
             <ProtectedRoute allowedRole="employee">
-              <CertificateViewer key={localStorage.getItem('employeeId') || 'cert_viewer_logged_out'} />
-             </ProtectedRoute>
+               <CertificateViewer key={currentUser?.uid || 'cert_viewer_logged_out'} />
+              </ProtectedRoute>
           }
           />
 
         {/* Not Found Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+       </>
+  );
+}
+
+const App = () => {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 };
