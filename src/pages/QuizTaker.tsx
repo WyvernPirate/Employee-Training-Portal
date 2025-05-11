@@ -8,9 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label'; // Assuming Label is from shadcn/ui
 import { ArrowLeft, CheckCircle, Loader2, XCircle, Eye } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; 
 
-// Assuming Assessment interface is defined in AdminDashboard or a shared types file
-// For now, let's define the necessary parts here or import if available
 interface QuizDefinition {
   id: string;
   title: string;
@@ -26,6 +25,7 @@ interface QuizDefinition {
 const QuizTaker = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
+  const { currentUser } = useAuth(); 
 
   const [quiz, setQuiz] = useState<QuizDefinition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,16 +37,15 @@ const QuizTaker = () => {
   const [passedQuiz, setPassedQuiz] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null); 
 
-  const employeeId = localStorage.getItem('employeeId');
-
   useEffect(() => {
+    const currentEmployeeId = currentUser?.uid;
     if (!quizId) {
       toast.error("Quiz ID is missing.");
       navigate('/employee-dashboard');
       return;
     }
-    if (!employeeId) {
-      toast.error("User not identified. Please log in.");
+     if (!currentEmployeeId) {
+      toast.error("User not identified. Please log in again.");
       navigate('/login');
       return;
     }
@@ -78,7 +77,7 @@ const QuizTaker = () => {
     };
 
     fetchQuiz();
-  }, [quizId, navigate, employeeId]);
+   }, [quizId, navigate, currentUser]); // Depend on currentUser
 
   // Timer useEffect
   useEffect(() => {
@@ -132,7 +131,8 @@ const QuizTaker = () => {
   };
 
   const handleSubmitQuiz = async (autoSubmitted = false) => {
-  if (!quiz || !employeeId || isSubmitting) return;
+  const currentEmployeeId = currentUser?.uid;
+  if (!quiz || !currentEmployeeId || isSubmitting) return;
 
     // Optional: Add validation to ensure all questions are answered
     if (!autoSubmitted && userAnswers.some(answer => answer === -1)) {
@@ -149,7 +149,7 @@ const QuizTaker = () => {
 
       // Save the result to a new collection (e.g., employee_assessment_results)
       await addDoc(collection(db, "employee_assessment_results"), {
-        employeeId: employeeId,
+        employeeId: currentEmployeeId,
         quizId: quiz.id,
         title: quiz.title,
         score: score,
@@ -166,7 +166,7 @@ const QuizTaker = () => {
       if (passed && quiz.grantsCertificate && quiz.certificateTitle) {
         try {
           await addDoc(collection(db, "certificates"), {
-            employeeId: employeeId,
+            employeeId: currentEmployeeId,
             quizId: quiz.id, // Link to the quiz that granted it
             title: quiz.certificateTitle,
             issuedDate: serverTimestamp(),
