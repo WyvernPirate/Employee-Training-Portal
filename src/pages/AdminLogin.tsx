@@ -14,19 +14,23 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { currentUser, loading: authLoading } = useAuth();
+  const { currentUser, loading: authLoading, logout: authLogout } = useAuth();
 
   useEffect(() => {
     if (!authLoading && currentUser) {
-      if (currentUser.userType === 'admin') {
+     if (currentUser.userType === 'admin') { // Correct user type for this page
         const from = location.state?.from?.pathname || '/admin-dashboard';
         console.log("AdminLogin useEffect: Navigating to", from, "currentUser:", currentUser);
         navigate(from, { replace: true });
-      }
-      // If an employee somehow lands here, ProtectedRoute for employee dashboard will handle them
-      // or they'll be redirected from /admin-dashboard by its ProtectedRoute.
+      } else {
+        // Incorrect user type for this page, or userType is undefined
+        toast.error("Access Denied. This login is for administrators only.");
+        console.log("AdminLogin useEffect: Mismatched userType or undefined. Logging out. currentUser:", currentUser);
+        authLogout(); // Log out the Firebase session
+        // User remains on the admin login page as currentUser will become null
+      } 
     }
-  }, [currentUser, authLoading, navigate, location.state]);
+ }, [currentUser, authLoading, navigate, location.state, authLogout]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
