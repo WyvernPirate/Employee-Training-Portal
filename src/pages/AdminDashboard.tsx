@@ -647,14 +647,15 @@ useEffect(() => {
       const userCredential = await createUserWithEmailAndPassword(auth, newEmployeeEmail, newEmployeePassword);
       const newFirebaseUser = userCredential.user;
 
-      // 2. Create corresponding employee document in Firestore using the Firebase UID as the document ID
-      //    and DO NOT store the password.
-      const employeeDocRef = doc(db, 'employees', newFirebaseUser.uid); // Use UID as document ID
-      await setDoc(employeeDocRef, { // Use setDoc to specify the document ID
-      firstName: newEmployeeFirstName,
+     // 2. Create corresponding employee document in Firestore.
+      //    Let Firestore auto-generate the document ID.
+      //    Add the Firebase Auth UID as a 'uid' field in the document.
+      await addDoc(employeesCollectionRef, { // Use addDoc for auto-generated ID
+        firstName: newEmployeeFirstName,
         surname: newEmployeeSurname,
         email: newEmployeeEmail,
         department: newEmployeeDepartment,
+        uid: newFirebaseUser.uid, // Explicitly add the Firebase Auth UID as a field
         createdAt: serverTimestamp(),
         completedVideoIds: [], // Initialize empty
       });
