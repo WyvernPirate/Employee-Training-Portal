@@ -1,13 +1,12 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import bcrypt from 'bcryptjs';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
-import { db } from '@/firebaseConfig'; // Import your Firestore instance
+import { auth } from '@/firebaseConfig';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -15,6 +14,20 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { currentUser, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && currentUser) {
+      if (currentUser.userType === 'admin') {
+        const from = location.state?.from?.pathname || '/admin-dashboard';
+        console.log("AdminLogin useEffect: Navigating to", from, "currentUser:", currentUser);
+        navigate(from, { replace: true });
+      }
+      // If an employee somehow lands here, ProtectedRoute for employee dashboard will handle them
+      // or they'll be redirected from /admin-dashboard by its ProtectedRoute.
+    }
+  }, [currentUser, authLoading, navigate, location.state]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,39 +36,20 @@ const AdminLogin = () => {
     
     try {
       // 1. Query Firestore for the admin user by email
-      const adminCollectionRef = collection(db, 'admin'); // Assuming your collection is named 'admin'
-      const q = query(adminCollectionRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        toast.error('Admin user not found.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Assuming email is unique, there should only be one doc
-      const adminDoc = querySnapshot.docs[0];
-      const adminData = adminDoc.data();
-
-      // 2. Compare the entered password with the stored hashed password
-      const passwordMatch = await bcrypt.compare(password, adminData.hashedPassword);
-
-      if (passwordMatch) {
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userType', 'admin');
-        toast.success('Admin login successful!');
-        const from = location.state?.from?.pathname || '/admin-dashboard';
-        navigate(from, { replace: true });
-      } else {
-        toast.error('Invalid admin credentials. Please try again.');
-      }
-    } catch (error) {
-      console.error("Admin login error:", error);
-      toast.error('An error occurred during login. Please try again.');
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success('Login attempt successful! Redirecting...');
+      // Navigation is handled by the useEffect hook
+    } catch (error: any) {
+      console.error("Firebase admin login error:", error);
+      toast.error(error.message || 'Invalid credentials or login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Checking authentication...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
