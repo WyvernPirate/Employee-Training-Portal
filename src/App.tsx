@@ -10,7 +10,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import TrainingViewer from './pages/TrainingViewer';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import EmployeeRegister from './pages/EmployeeRegister';
 import QuizTaker from './pages/QuizTaker';
 import CertificateViewer from './pages/CertificateViewer';
  
@@ -48,14 +47,7 @@ const App = () => {
             <AdminLogin />
           } 
         />
-        <Route 
-          path="/register" 
-          element={ // If already logged in, redirect to their dashboard
-            isAuthenticated && userType === 'employee' ? <Navigate to="/employee-dashboard" replace /> :
-            isAuthenticated && userType === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
-            <EmployeeRegister />
-          } 
-        />
+        
         
         {/* Protected Employee Routes */}
         <Route 
