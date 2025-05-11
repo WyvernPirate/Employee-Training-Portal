@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import bcrypt from 'bcryptjs';
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Import Firebase Auth method
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { LogOut } from 'lucide-react';
 import EmployeeDetailsModal from '@/components/admin/EmployeeDetailsModal';
 
-import { db, storage } from '@/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, deleteDoc as deleteFirestoreDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy } from "firebase/firestore";
+import { db, storage,auth } from '@/firebaseConfig'; // Ensure firebaseAuth is exported from your Firebase config
+import { collection, query, where, getDocs, addDoc, deleteDoc as deleteFirestoreDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy, setDoc } from "firebase/firestore"; // Added setDoc
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import ConfirmDeleteDialog from '@/components/admin/ConfirmDeleteDialog';
 import EditContentModal from '@/components/admin/EditContentModal';
@@ -643,14 +643,17 @@ useEffect(() => {
         return;
       }
 
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newEmployeePassword, salt);
+      // 1. Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, newEmployeeEmail, newEmployeePassword);
+      const newFirebaseUser = userCredential.user;
 
-      await addDoc(employeesCollectionRef, {
-        firstName: newEmployeeFirstName,
+      // 2. Create corresponding employee document in Firestore using the Firebase UID as the document ID
+      //    and DO NOT store the password.
+      const employeeDocRef = doc(db, 'employees', newFirebaseUser.uid); // Use UID as document ID
+      await setDoc(employeeDocRef, { // Use setDoc to specify the document ID
+      firstName: newEmployeeFirstName,
         surname: newEmployeeSurname,
         email: newEmployeeEmail,
-        hashedPassword,
         department: newEmployeeDepartment,
         createdAt: serverTimestamp(),
         completedVideoIds: [], // Initialize empty
