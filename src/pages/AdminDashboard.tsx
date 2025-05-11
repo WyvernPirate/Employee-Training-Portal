@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import bcrypt from 'bcryptjs';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ import UploadContentAdminTab from '@/components/admin/tabs/UploadContentAdminTab
 import CreateQuizAdminTab from '@/components/admin/tabs/CreateQuizAdminTab';
 import ManageContentAdminTab from '@/components/admin/tabs/ManageContentAdminTab';
 import ManageQuizzesAdminTab from '@/components/admin/tabs/ManageQuizzesAdminTab';
+import RegisterEmployeeAdminTab from '@/components/admin/tabs/RegisterEmployeeAdminTab';
 
 
 // Interfaces for Firestore data
@@ -132,6 +134,15 @@ const AdminDashboard = () => {
   const [quizTimeLimit, setQuizTimeLimit] = useState<number | null>(30); // in minutes
   const [quizGrantsCertificate, setQuizGrantsCertificate] = useState(false);
   const [quizCertificateTitle, setQuizCertificateTitle] = useState("");
+
+  // Form states for Admin Employee Registration
+  const [newEmployeeFirstName, setNewEmployeeFirstName] = useState('');
+  const [newEmployeeSurname, setNewEmployeeSurname] = useState('');
+  const [newEmployeeEmail, setNewEmployeeEmail] = useState('');
+  const [newEmployeePassword, setNewEmployeePassword] = useState('');
+  const [newEmployeeConfirmPassword, setNewEmployeeConfirmPassword] = useState('');
+  const [newEmployeeDepartment, setNewEmployeeDepartment] = useState(departmentOptions[0]); // Default to first specific department
+  const [isRegisteringEmployee, setIsRegisteringEmployee] = useState(false);
 
   // Filtering states
   const [searchQuery, setSearchQuery] = useState("");
@@ -598,6 +609,64 @@ useEffect(() => {
     }
   };
 
+  const handleAdminEmployeeRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRegisteringEmployee(true);
+    toast.dismiss();
+
+    if (newEmployeePassword !== newEmployeeConfirmPassword) {
+      toast.error("Passwords do not match.");
+      setIsRegisteringEmployee(false);
+      return;
+    }
+
+    if (newEmployeePassword.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
+      setIsRegisteringEmployee(false);
+      return;
+    }
+
+    if (!newEmployeeDepartment || newEmployeeDepartment === "All") {
+      toast.error("Please select a specific department for the employee.");
+      setIsRegisteringEmployee(false);
+      return;
+    }
+
+    try {
+      const employeesCollectionRef = collection(db, 'employees');
+      const q = query(employeesCollectionRef, where("email", "==", newEmployeeEmail));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        toast.error("An account with this email already exists.");
+        setIsRegisteringEmployee(false);
+        return;
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newEmployeePassword, salt);
+
+      await addDoc(employeesCollectionRef, {
+        firstName: newEmployeeFirstName,
+        surname: newEmployeeSurname,
+        email: newEmployeeEmail,
+        hashedPassword,
+        department: newEmployeeDepartment,
+        createdAt: serverTimestamp(),
+        completedVideoIds: [], // Initialize empty
+      });
+
+      toast.success(`Employee ${newEmployeeFirstName} ${newEmployeeSurname} registered successfully!`);
+      setNewEmployeeFirstName(''); setNewEmployeeSurname(''); setNewEmployeeEmail('');
+      setNewEmployeePassword(''); setNewEmployeeConfirmPassword(''); setNewEmployeeDepartment(departmentOptions[0]);
+      fetchAdminData(); // Refresh employee list
+    } catch (error) {
+      console.error("Admin employee registration error:", error);
+      toast.error('An error occurred during registration. Please try again.');
+    } finally {
+      setIsRegisteringEmployee(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -628,9 +697,10 @@ useEffect(() => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 max-w-4xl"> {/* Adjusted grid for new tab */}
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+         <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 max-w-5xl"> {/* Adjusted grid */}
+             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="employees">Employees</TabsTrigger>
+            <TabsTrigger value="registerEmployee">Register Employee</TabsTrigger>
             <TabsTrigger value="content">Upload Content</TabsTrigger>
             <TabsTrigger value="quizzes">Create Quizzes</TabsTrigger>
              <TabsTrigger value="manageContent">Manage Content</TabsTrigger>
@@ -657,6 +727,21 @@ useEffect(() => {
               setDepartmentFilter={setEmployeeDepartmentFilter}
               departmentOptions={departmentOptions}
               onViewEmployeeDetails={handleViewEmployeeDetails}
+            />
+          </TabsContent>
+
+          {/* Register Employee Tab */}
+          <TabsContent value="registerEmployee">
+            <RegisterEmployeeAdminTab
+              newEmployeeFirstName={newEmployeeFirstName} setNewEmployeeFirstName={setNewEmployeeFirstName}
+              newEmployeeSurname={newEmployeeSurname} setNewEmployeeSurname={setNewEmployeeSurname}
+              newEmployeeEmail={newEmployeeEmail} setNewEmployeeEmail={setNewEmployeeEmail}
+              newEmployeePassword={newEmployeePassword} setNewEmployeePassword={setNewEmployeePassword}
+              newEmployeeConfirmPassword={newEmployeeConfirmPassword} setNewEmployeeConfirmPassword={setNewEmployeeConfirmPassword}
+              newEmployeeDepartment={newEmployeeDepartment} setNewEmployeeDepartment={setNewEmployeeDepartment}
+              departmentOptions={departmentOptions}
+              handleAdminEmployeeRegistration={handleAdminEmployeeRegistration}
+              isRegisteringEmployee={isRegisteringEmployee}
             />
           </TabsContent>
 
