@@ -7,6 +7,7 @@ import { Star, ArrowLeft, CheckCircle, Loader2, HelpCircle } from 'lucide-react'
 import { toast } from "sonner";
 import { doc, getDoc, updateDoc, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
+import { useAuth } from '@/contexts/AuthContext'; // Assuming you have an AuthContext for user management
 import ReactPlayer from 'react-player'; // Or your preferred player
 
 interface TrainingContentData {
@@ -24,6 +25,7 @@ interface TrainingContentData {
 const TrainingViewer = () => {
   const navigate = useNavigate();
   const { videoId } = useParams<{ videoId: string }>(); // videoId is the training_content ID
+  const { currentUser } = useAuth(); // Assuming you have a context for auth
 
   const [content, setContent] = useState<TrainingContentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,8 +36,7 @@ const TrainingViewer = () => {
   const [isPlaying, setIsPlaying] = useState(false); // Controlled by ReactPlayer callbacks
   const [videoProgress, setVideoProgress] = useState(0);
   const [rating, setRating] = useState<number | null>(null);
-  const employeeId = localStorage.getItem('employeeId');
-
+ 
   // Simplified activeTab logic for now, assuming content type dictates view
   // const [activeTab, setActiveTab] = useState("video");
 
@@ -56,17 +57,18 @@ const TrainingViewer = () => {
 
 
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("TrainingViewer useEffect: videoId from params:", videoId, "employeeId from localStorage:", employeeId);
-    }
+   const currentEmployeeId = currentUser?.uid;
+     if (process.env.NODE_ENV === 'development') {
+       console.log("TrainingViewer useEffect: videoId from params:", videoId, "currentEmployeeId (UID):", currentEmployeeId);
+      }
     if (!videoId) {
       toast.error("Training content ID is missing.");
       navigate(-1);
       return;
     }
-    if (!employeeId) {
-      toast.error("User not identified. Please log in.");
-      navigate('/login');
+    if (!currentEmployeeId) {
+      toast.error("User not identified. Please log in again."); // More specific message
+    navigate('/login');
       return;
     }
 
@@ -93,8 +95,8 @@ const TrainingViewer = () => {
           });
 
           // Check if this user has completed this content
-          const employeeRef = doc(db, "employees", employeeId);
-          const employeeSnap = await getDoc(employeeRef);
+         const employeeRef = doc(db, "employees", currentEmployeeId);
+           const employeeSnap = await getDoc(employeeRef);
           if (process.env.NODE_ENV === 'development') {
             console.log("TrainingViewer fetchContentAndLogView: Fetched employee doc for completion check. Exists:", employeeSnap.exists());
           }
@@ -134,15 +136,16 @@ const TrainingViewer = () => {
     };
 
     fetchContentAndLogView();
-  }, [videoId, navigate, employeeId]);
+  }, [videoId, navigate, currentUser]); // Depend on currentUser
 
   const handleMarkAsComplete = async () => {
-    if (!videoId || !employeeId || isCompletedByCurrentUser || !content) return;
+      const currentEmployeeId = currentUser?.uid;
+    if (!videoId || !currentEmployeeId || isCompletedByCurrentUser || !content) return;
 
     setIsUpdating(true);
     try {
-      const employeeRef = doc(db, "employees", employeeId);
-      await updateDoc(employeeRef, {
+      const employeeRef = doc(db, "employees", currentEmployeeId);
+       await updateDoc(employeeRef, {
         completedVideoIds: arrayUnion(videoId)
       });
 

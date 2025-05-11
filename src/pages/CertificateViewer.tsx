@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'; // Added collection, query, where, getDocs
 import { db } from '@/firebaseConfig';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
@@ -53,11 +53,17 @@ const CertificateViewer = () => {
 
           // Fetch employee name
           if (data.employeeId) {
-            const empDocRef = doc(db, "employees", data.employeeId);
-            const empDocSnap = await getDoc(empDocRef);
-            if (empDocSnap.exists()) {
-              const empData = empDocSnap.data();
-              certData.employeeName = `${empData.firstName} ${empData.surname}`.trim() || "Valued Employee";
+           // Query the 'employees' collection for a document where the 'uid' field matches data.employeeId
+            const employeesCollectionRef = collection(db, "employees");
+            const empQuery = query(employeesCollectionRef, where("uid", "==", data.employeeId));
+            const empQuerySnapshot = await getDocs(empQuery);
+
+            if (!empQuerySnapshot.empty) {
+              const empDocSnap = empQuerySnapshot.docs[0]; // Assuming uid is unique
+              if (empDocSnap.exists()) {
+                const empData = empDocSnap.data();
+                certData.employeeName = `${empData.firstName || ''} ${empData.surname || ''}`.trim() || "Valued Employee";
+              } 
             }
           }
 
