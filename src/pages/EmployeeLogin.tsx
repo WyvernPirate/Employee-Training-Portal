@@ -128,10 +128,10 @@ const EmployeeLogin = () => {
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </form>
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">Don't have an account? <a href="/register" className="text-[#ea384c] hover:underline">Register</a></p>
-            </div>
-          </div>
+          {/* <div className="mt-4 text-center">
+               <p className="text-sm text-gray-600">Don't have an account? <a href="/register" className="text-[#ea384c] hover:underline">Register</a></p>
+            </div> */}
+          </div> 
         </div>
       </div>
     </div>
