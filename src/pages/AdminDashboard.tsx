@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { LogOut } from 'lucide-react';
 import EmployeeDetailsModal from '@/components/admin/EmployeeDetailsModal';
-
+import { useAuth } from '@/contexts/AuthContext';
 import { db, storage,auth } from '@/firebaseConfig'; // Ensure firebaseAuth is exported from your Firebase config
 import { collection, query, where, getDocs, addDoc, deleteDoc as deleteFirestoreDoc, doc, updateDoc, serverTimestamp, getDoc, orderBy, setDoc } from "firebase/firestore"; // Added setDoc
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
@@ -99,6 +99,7 @@ const departmentOptions = [
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { logout: authLogout, currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   // Data states
@@ -325,11 +326,10 @@ useEffect(() => {
     const matchesQuizDepartment = departmentMatch(assessment.department);
     const matchesRelatedContent = quizRelatedContentFilter === "all" || assessment.relatedTrainingContentId === quizRelatedContentFilter;
     return matchesSearch && matchesQuizDepartment && matchesRelatedContent;
-   });
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userType');
-    toast.info("Logged out successfully!");
+    });
+    const handleLogout = async () => {
+    await authLogout(); // Use logout from AuthContext
+     toast.info("Logged out successfully!");
     navigate('/');
   };
 
@@ -677,9 +677,10 @@ useEffect(() => {
       <header className="bg-[#000000] text-white p-4 sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Spare Parts Classroom - Admin</h1>
-          <div className="flex items-center space-x-4">
-            <span className="hidden md:inline-block">Administrator</span>
-            <Button
+          <div className="flex items-center space-x-4">            
+            <span className="hidden md:inline-block">
+              {currentUser?.email || 'Administrator'}
+            </span><Button
               variant="outline"
               size="sm"
               onClick={handleLogout}

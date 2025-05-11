@@ -15,7 +15,7 @@ const EmployeeLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { currentUser, loading: authLoading } = useAuth();
+  const { currentUser, loading: authLoading, logout: authLogout } = useAuth();
 
   useEffect(() => {
      // This effect runs when currentUser (from AuthContext) or authLoading changes.
@@ -23,14 +23,18 @@ const EmployeeLogin = () => {
     // it means either the user was already logged in or just successfully logged in
     // and AuthContext has processed them.
   if (!authLoading && currentUser) {
-       if (currentUser.userType === 'employee') { // Ensure userType is also checked
-        const from = location.state?.from?.pathname || '/employee-dashboard';
+       if (currentUser.userType === 'employee') { // Correct user type for this page
+         const from = location.state?.from?.pathname || '/employee-dashboard';
         console.log("EmployeeLogin useEffect: Navigating to", from, "currentUser:", currentUser);
         navigate(from, { replace: true });
-       } // No explicit redirect here if userType is admin, as they shouldn't be on this page.
-        // ProtectedRoute for /admin-dashboard would handle an admin trying to access employee areas.
-    }
-  }, [currentUser, authLoading, navigate]);
+      } else {
+        // Incorrect user type for this page, or userType is undefined
+        toast.error("Access Denied. This login is for employees only.");
+        console.log("EmployeeLogin useEffect: Mismatched userType or undefined. Logging out. currentUser:", currentUser);
+        authLogout(); // Log out the Firebase session
+        // User remains on the employee login page as currentUser will become null
+       } }
+  }, [currentUser, authLoading, navigate, location.state, authLogout]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {

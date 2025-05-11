@@ -62,8 +62,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             foundUserInFirestore = true;
           }
         } else {
-         // Check admins collection if not found in employees, also by querying 'uid' field
-          const adminsCollectionRef = collection(db, "admins");
+          // Check admins collection if not found in employees, also by querying 'uid' field
+          // Make sure "admin" is the correct collection name. If it's "admins", change it here.
+          const adminsCollectionRef = collection(db, "admin"); 
           const adminQuery = query(adminsCollectionRef, where("uid", "==", firebaseUser.uid));
           const adminQuerySnapshot = await getDocs(adminQuery);
 
