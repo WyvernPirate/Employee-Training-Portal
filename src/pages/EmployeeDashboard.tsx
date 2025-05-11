@@ -9,6 +9,7 @@ import AssessmentsTab from '@/components/dashboard/AssessmentsTab';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { db } from '@/firebaseConfig';
+import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 
 // Define interfaces for our data
@@ -66,57 +67,65 @@ const EmployeeDashboard = () => {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [assessments, setAssessments] = useState<DashboardAssessment[]>([]);
 
-  const employeeId = localStorage.getItem('employeeId');
-  const cachedFullName = localStorage.getItem('employeeFullName');
-  const cachedDepartment = localStorage.getItem('employeeDepartment');
+  const { currentUser, logout: authLogout } = useAuth(); // Get currentUser and logout from AuthContext
 
   useEffect(() => {
-    if (!employeeId) {
-      toast.error("User session data incomplete. Logging out for safety.");
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('employeeId');
-      localStorage.removeItem('employeeFullName');
-      localStorage.removeItem('employeeDepartment');
-      navigate('/login', { replace: true });
-      return;
-    }
-    console.log("EmployeeDashboard: useEffect triggered, calling fetchDashboardData for employeeId:", employeeId);
-    fetchDashboardData(employeeId);
-  }, [employeeId, navigate]);
+    // currentUser will be null initially if not logged in, or if AuthContext is still loading.
+    // AuthContext's loading state is handled by ProtectedRoute.
+    // If ProtectedRoute allows rendering, currentUser should be available.
+    if (currentUser && currentUser.uid) {
+      console.log("EmployeeDashboard: useEffect triggered, calling fetchDashboardData for employeeId (UID):", currentUser.uid);
+    fetchDashboardData(currentUser.uid); // Fetch data only when currentUser.uid is available
+    } else if (!currentUser && !isLoading) { 
+      // If still not loading (meaning AuthContext resolved) and no currentUser, then redirect.
+       // This case should ideally be caught by ProtectedRoute,
+      // but as a safeguard if the component somehow renders without a currentUser.
+      toast.error("User not authenticated. Redirecting to login.");
+     navigate('/login', { replace: true });
+     }
+  }, [currentUser?.uid, navigate]); // Depend only on currentUser.uid (or currentUser itself) and navigate
 
   const fetchDashboardData = async (currentEmployeeId: string) => {
     console.log("fetchDashboardData: Starting for employeeId:", currentEmployeeId);
     setIsLoading(true);
     try {
       // 1. Fetch Employee Details
+       // Employee details (name, department) are now part of currentUser from AuthContext
+      // if you've set them up to be fetched there.
+  
       console.log("fetchDashboardData: Fetching employee details...");
-      const empDocRef = doc(db, "employees", currentEmployeeId);
-      const empDocSnap = await getDoc(empDocRef);
+     // Query for the employee document where the 'uid' field matches currentEmployeeId (Firebase Auth UID)
+      const employeesCollectionRef = collection(db, "employees");
+      const empDetailsQuery = query(employeesCollectionRef, where("uid", "==", currentEmployeeId));
+      const empQuerySnapshot = await getDocs(empDetailsQuery);
       let currentEmployeeData: EmployeeData;
+      let employeeDocumentExists = false;
 
-      if (empDocSnap.exists()) {
-        const data = empDocSnap.data();
-        console.log("fetchDashboardData: Employee doc exists, data:", data);
+     if (!empQuerySnapshot.empty) {
+        const empDocSnap = empQuerySnapshot.docs[0]; // Assuming uid is unique
+        const data = empDocSnap.data() as Record<string, any>; // Added type assertion
+         console.log("fetchDashboardData: Employee doc exists, data:", data);
+        employeeDocumentExists = true;
         currentEmployeeData = {
             fullName: (data.firstName && data.surname) 
-                        ? `${data.firstName} ${data.surname}` 
-                        : data.fullName || cachedFullName || "Employee",
-            department: data.department || cachedDepartment || "",
-            completedVideoIds: data.completedVideoIds || [],
+                         ? `${data.firstName} ${data.surname}`
+                        : currentUser?.displayName || `${currentUser?.firstName || ''} ${currentUser?.surname || ''}`.trim() || "Employee",
+            department: data.department || currentUser?.department || "",
+         completedVideoIds: data.completedVideoIds || [],
         };
         setEmployeeData(currentEmployeeData);
-        if (currentEmployeeData.fullName && currentEmployeeData.fullName !== "Employee") {
-            localStorage.setItem('employeeFullName', currentEmployeeData.fullName);
-        }
-        if (data.department) localStorage.setItem('employeeDepartment', data.department);
-      } else {
-        console.warn("fetchDashboardData: Employee doc does not exist for ID:", currentEmployeeId);
-        toast.error("Employee data not found. Displaying cached info if available.");
-        currentEmployeeData = {
-            fullName: cachedFullName || "Employee",
-            department: cachedDepartment || "",
-            completedVideoIds: [],
+        // No need to set these in localStorage anymore for auth purposes
+        // if (currentEmployeeData.fullName && currentEmployeeData.fullName !== "Employee") {
+        //     localStorage.setItem('employeeFullName', currentEmployeeData.fullName);
+        // }
+        // if (data.department) localStorage.setItem('employeeDepartment', data.department);
+     } else {
+        console.warn("fetchDashboardData: Employee doc with uid field matching currentEmployeeId not found:", currentEmployeeId);
+        toast.error("Employee data not found in Firestore. Using info from authentication if available.");
+       currentEmployeeData = {
+            fullName: currentUser?.displayName || `${currentUser?.firstName || ''} ${currentUser?.surname || ''}`.trim() || "Employee",
+            department: currentUser?.department || "",
+                completedVideoIds: [],
         };
         setEmployeeData(currentEmployeeData);
       }
@@ -125,7 +134,7 @@ const EmployeeDashboard = () => {
       // 2. Fetch Training Content
       console.log("fetchDashboardData: Fetching training content...");
       let contentQuery;
-      if (currentEmployeeData.department && currentEmployeeData.department !== "All") {
+      if (currentEmployeeData.department && currentEmployeeData.department !== "" && currentEmployeeData.department !== "All") {
         console.log("fetchDashboardData: Querying training_content for department:", currentEmployeeData.department, "and 'All'");
         contentQuery = query(
           collection(db, "training_content"),
@@ -133,8 +142,12 @@ const EmployeeDashboard = () => {
           orderBy("createdAt", "desc")
         );
       } else {
-        console.log("fetchDashboardData: Querying all training_content");
-        contentQuery = query(collection(db, "training_content"), orderBy("createdAt", "desc"));
+        // If department is "All", empty, or undefined, show all content
+        // Or, if you want to show only "All" department content for empty/undefined employee department:
+        // contentQuery = query(collection(db, "training_content"), where("department", "==", "All"), orderBy("createdAt", "desc"));
+        // For now, let's assume empty/undefined/ "All" department for employee means they see all training.
+        console.log("fetchDashboardData: Employee department is 'All' or not specific, querying all training_content");
+         contentQuery = query(collection(db, "training_content"), orderBy("createdAt", "desc"));
       }
 
       const contentSnapshot = await getDocs(contentQuery);
@@ -285,17 +298,13 @@ const EmployeeDashboard = () => {
     navigate(`/training-viewer/${videoId}`);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('employeeId');
-    localStorage.removeItem('employeeFullName');
-    localStorage.removeItem('employeeDepartment');
-    toast.info("You have been logged out.");
+  const handleLogout = async () => {
+    await authLogout(); // Use logout from AuthContext
+   toast.info("You have been logged out.");
     navigate('/');
   };
 
-  const userName = employeeData?.fullName || cachedFullName || "Employee";
+  const userName = employeeData?.fullName || currentUser?.displayName || `${currentUser?.firstName || ''} ${currentUser?.surname || ''}`.trim() || "Employee";
 
   if (isLoading) {
     return (
