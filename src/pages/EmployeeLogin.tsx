@@ -1,13 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import bcrypt from 'bcryptjs';
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase Auth method
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
-import { db } from '@/firebaseConfig'; 
+import { auth } from '@/firebaseConfig'; // Import auth from your Firebase config
+import { useAuth } from '@/contexts/AuthContext'; // Import your Auth context
 
 const EmployeeLogin = () => {
   const location = useLocation();
@@ -15,52 +15,50 @@ const EmployeeLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { currentUser, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+     // This effect runs when currentUser (from AuthContext) or authLoading changes.
+    // If AuthContext is done loading AND a currentUser exists with the 'employee' userType,
+    // it means either the user was already logged in or just successfully logged in
+    // and AuthContext has processed them.
+  if (!authLoading && currentUser) {
+       if (currentUser.userType === 'employee') { // Ensure userType is also checked
+        const from = location.state?.from?.pathname || '/employee-dashboard';
+        console.log("EmployeeLogin useEffect: Navigating to", from, "currentUser:", currentUser);
+        navigate(from, { replace: true });
+       } // No explicit redirect here if userType is admin, as they shouldn't be on this page.
+        // ProtectedRoute for /admin-dashboard would handle an admin trying to access employee areas.
+    }
+  }, [currentUser, authLoading, navigate]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     toast.dismiss(); // Clear previous toasts
     
-      try {
-        // 1. Query Firestore for the employee user by email
-        const employeesCollectionRef = collection(db, 'employees');
-        const q = query(employeesCollectionRef, where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-  
-        if (querySnapshot.empty) {
-          toast.error('Employee not found.');
-          setIsLoading(false);
-          return;
-        }
-  
-        const employeeDoc = querySnapshot.docs[0];
-        const employeeData = employeeDoc.data();
-  
-        // 2. Compare the entered password with the stored hashed password
-        const passwordMatch = await bcrypt.compare(password, employeeData.hashedPassword);
-  
-        if (passwordMatch) {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userType', 'employee');
-          localStorage.setItem('employeeId', employeeDoc.id);
-          const constructedFullName = (employeeData.firstName && employeeData.surname) ? `${employeeData.firstName} ${employeeData.surname}` : (employeeData.fullName || 'Employee');
-          localStorage.setItem('employeeFullName', constructedFullName);
-          localStorage.setItem('employeeDepartment', employeeData.department || '');
-          localStorage.setItem('employeeEmail', employeeData.email || '');
-          toast.success('Login successful!');
-          const from = location.state?.from?.pathname || '/employee-dashboard';
-          navigate(from, { replace: true });
-        } else {
-          toast.error('Invalid credentials. Please try again.');
-        }
-      } catch (error) {
-        console.error("Employee login error:", error);
-        toast.error('An error occurred during login. Please try again.');
-      } finally {
+     try {
+      await signInWithEmailAndPassword(auth, email, password);
+       // DO NOT navigate here.
+      // onAuthStateChanged in AuthContext will update currentUser.
+      // The useEffect above will then handle navigation.
+      toast.success('Login attempt successful! Redirecting...');
+       } catch (error: any) {
+      console.error("Firebase employee login error:", error);
+      toast.error(error.message || 'Invalid credentials or login failed. Please try again.');
+    } finally {
       setIsLoading(false);
-      }
+    }
   };
 
+  // If auth is still loading, show a loading indicator.
+  // This prevents rendering the form and then immediately redirecting if currentUser is already set.
+  if (authLoading) {
+   // Also, if currentUser is already set and is an employee, this component will redirect via useEffect.
+    // So, this loading state is primarily for the initial load of AuthContext.
+    return <div className="min-h-screen flex items-center justify-center">Checking authentication...</div>;
+ }
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
