@@ -1,6 +1,10 @@
 # Employee Training Portal
 
-A web application for an automotive spare parts company's employee training portal.
+![Build](https://img.shields.io/github/actions/workflow/status/WyvernPirate/Employee-Training-Portal/ci.yml?branch=main)
+![License](https://img.shields.io/github/license/WyvernPirate/Employee-Training-Portal)
+![Issues](https://img.shields.io/github/issues/WyvernPirate/Employee-Training-Portal)
+
+A comprehensive web application to streamline employee onboarding, training, and progress tracking in the automotive spare parts industry.
 
 [Live Demo](https://employee-training-portal-6a36e.web.app/)
 
@@ -10,30 +14,39 @@ A web application for an automotive spare parts company's employee training port
 
 - [About](#about)
 - [Features](#features)
+- [Technologies Used](#technologies-used)
 - [Getting Started](#getting-started)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
-- [License](#license)
 - [Contact](#contact)
 
 ---
 
 ## About
 
-This project aims to provide a comprehensive portal for managing employee training within an automotive spare parts company. It is built primarily with TypeScript and designed to streamline onboarding, course management, tracking, and reporting for employees and administrators.
+Employee Training Portal provides a centralized solution for managing employee training programs, tracking progress, and assessing knowledge. Built with TypeScript and React, it aims to make corporate training seamless and efficient.
 
 ---
 
 ## Features
 
-- Employee authentication and user management
-- Course and module management for admins
-- Progress tracking for employees
-- Quiz and assessment functionality
-- Admin dashboard and analytics
+- Secure, role-based employee authentication
+- Admin dashboard with analytics and reporting
+- Course, module, and content management
+- Automated progress tracking and reminders
+- Quizzes and assessments for employees
 - Responsive, modern UI
+
+---
+
+## Technologies Used
+
+- [TypeScript](https://www.typescriptlang.org/)
+- [React](https://react.dev/)
+- [Node.js](https://nodejs.org/)
+- [Firebase](https://console.firebase.google.com/u/0/project/employee-training-portal-6a36e/overview) <!-- If used, adjust as needed -->
 
 ---
 
@@ -43,7 +56,7 @@ These instructions will help you set up the project locally for development and 
 
 ### Prerequisites
 
-- Node.js (v14 or above recommended)
+- Node.js (v14 or above)
 - npm or yarn
 
 ---
@@ -51,14 +64,11 @@ These instructions will help you set up the project locally for development and 
 ## Installation
 
 1. **Clone the repository:**
-
     ```bash
     git clone https://github.com/WyvernPirate/Employee-Training-Portal.git
     cd Employee-Training-Portal
     ```
-
 2. **Install dependencies:**
-
     ```bash
     npm install
     # or
@@ -70,7 +80,6 @@ These instructions will help you set up the project locally for development and 
 ## Usage
 
 To run the app locally:
-
 ```bash
 npm start
 # or
@@ -87,10 +96,10 @@ A typical structure might look like:
 
 ```
 /src
-  /components
-  /pages
-  /services
-  /utils
+  /components   # Reusable UI components
+  /pages        # Application pages/views
+  /services     # API and backend services
+  /utils        # Utility functions and helpers
   index.tsx
   App.tsx
 /public
@@ -98,24 +107,13 @@ package.json
 README.md
 ...
 ```
-> *Note: Update this section based on your actual folder structure for more accuracy.*
-
 ---
 
 ## Contributing
 
 Contributions are welcome! If you have suggestions, bug reports, or want to get involved, please open an issue or submit a pull request.
 
-*If a `CONTRIBUTING.md` file exists, link to it here.*
-
 ---
-
-## License
-
-*Specify your project's license here. If you have a LICENSE file, mention it and its type (e.g., MIT, GPL-3.0).*
-
----
-
 ## Contact
 
 For questions, reach out via [GitHub Issues](https://github.com/WyvernPirate/Employee-Training-Portal/issues) or contact [WyvernPirate](https://github.com/WyvernPirate).
